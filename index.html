@@ -113,8 +113,21 @@
     color: var(--muted);
   }
 
-  .spalten { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  @media (max-width: 640px) { .spalten { grid-template-columns: 1fr; } }
+  .tag-ansicht { display: grid; grid-template-columns: 46px 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 640px) {
+    .tag-ansicht { grid-template-columns: 1fr; }
+    .zeitachse { display: none; }
+  }
+
+  .zeitachse { position: relative; margin-top: 50px; }
+  .zeitachse .stunde-label {
+    position: absolute;
+    right: 6px;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
 
   .spalte {
     background: var(--card);
@@ -139,21 +152,76 @@
     font-size: 15px;
     line-height: 1;
   }
-  .termin-liste { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
-  .termin-leer { color: var(--muted); font-size: 13px; padding: 10px 0; }
+
+  .zeitraster {
+    position: relative;
+    border-radius: 12px;
+    background-color: #FBFBFC;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      var(--border) 0, var(--border) 1px,
+      transparent 1px, transparent 72px
+    );
+  }
 
   .termin-block {
+    position: absolute;
+    left: 6px;
+    right: 6px;
     border-left: 4px solid var(--violett);
     background: #F6F5FF;
-    border-radius: 10px;
-    padding: 8px 12px;
-    font-size: 13px;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
     cursor: pointer;
-    transition: background 0.15s;
+    overflow: hidden;
+    z-index: 1;
+    transition: box-shadow 0.15s, background 0.15s;
   }
-  .termin-block:hover { background: #ECEBFF; }
+  .termin-block:hover {
+    background: #ECEBFF;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .termin-block .zeit,
+  .termin-block .meta {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .termin-block.kompakt {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+  }
+  .termin-block.kompakt .zeit { font-weight: 700; margin-right: 5px; flex-shrink: 0; }
+  .termin-block.kompakt .kompakt-rest {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+  }
+  .termin-block.kompakt .kompakt-rest .typ { font-weight: 600; color: var(--violett); }
+
+  .tooltip {
+    position: fixed;
+    z-index: 100;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+    padding: 10px 14px;
+    font-size: 13px;
+    width: 210px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+    transition: opacity 0.14s ease, transform 0.14s ease;
+  }
+  .tooltip.sichtbar { opacity: 1; transform: translateY(0) scale(1); }
+  .tooltip .zeit { font-weight: 700; }
+  .tooltip .meta { color: var(--muted); font-size: 12px; margin-top: 3px; }
   .termin-block .zeit { font-weight: 700; }
-  .termin-block .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .termin-block .meta { color: var(--muted); font-size: 11px; margin-top: 1px; }
 
   /* Modal */
   #modal-overlay {
@@ -208,14 +276,15 @@
     <button id="logout-btn" onclick="logout()">Abmelden</button>
   </header>
 
-  <div class="spalten">
+  <div class="tag-ansicht">
+    <div class="zeitachse" id="zeitachse"></div>
     <div class="spalte">
       <h2>Lukas <button class="add-btn" onclick="oeffneModal('Lukas')">+</button></h2>
-      <div class="termin-liste" id="liste-lukas"></div>
+      <div class="zeitraster" id="raster-lukas"></div>
     </div>
     <div class="spalte">
       <h2>Andy <button class="add-btn" onclick="oeffneModal('Andy')">+</button></h2>
-      <div class="termin-liste" id="liste-andy"></div>
+      <div class="zeitraster" id="raster-andy"></div>
     </div>
   </div>
 </div>
@@ -254,12 +323,81 @@
   </div>
 </div>
 
+<div class="tooltip" id="termin-tooltip"></div>
+
 <script>
   const SUPABASE_URL = 'https://wcshsfxsrahufatxisxy.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_GnYu_dMxZNdyzm1AyNbW-Q_ar0-TO1y';
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let ausgewaehltesDatum = new Date(); // reallife "heute" als Start
+
+  // ---- Timeline-Konfiguration ----
+  const TAG_START_STUNDE = 7;   // Praxistag beginnt 07:00
+  const TAG_END_STUNDE = 20;    // Praxistag endet 20:00
+  const PX_PRO_MINUTE = 1.2;    // 72px pro Stunde
+
+  function minutenSeitTagesstart(zeitStr) {
+    const [h, m] = zeitStr.split(':').map(Number);
+    return (h * 60 + m) - TAG_START_STUNDE * 60;
+  }
+
+  function tagHoehePx() {
+    return (TAG_END_STUNDE - TAG_START_STUNDE) * 60 * PX_PRO_MINUTE;
+  }
+
+  function kurzBehandlung(typ) {
+    if (typ.includes('KG')) return 'KG';
+    if (typ.includes('Lymphdrainage')) return 'Lymphe';
+    return typ;
+  }
+
+  function addMinuten(zeitStr, minuten) {
+    const [h, m] = zeitStr.split(':').map(Number);
+    const gesamt = h * 60 + m + minuten;
+    const hh = Math.floor(gesamt / 60) % 24;
+    const mm = gesamt % 60;
+    return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+  }
+
+  function zeigeTooltip(event, t) {
+    const tip = document.getElementById('termin-tooltip');
+    const start = t.startzeit.slice(0, 5);
+    const ende = addMinuten(start, t.dauer_minuten);
+    tip.innerHTML = `
+      <div class="zeit">${start} &ndash; ${ende} Uhr</div>
+      <div class="meta">Raum ${t.raum} &middot; ${t.behandlungstyp}</div>
+      <div class="meta">${t.patientenname}</div>
+    `;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const breite = 210;
+    let left = rect.right + 10;
+    if (left + breite > window.innerWidth - 10) left = rect.left - breite - 10;
+    let top = Math.min(rect.top, window.innerHeight - 100);
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    tip.classList.add('sichtbar');
+  }
+
+  function versteckeTooltip() {
+    document.getElementById('termin-tooltip').classList.remove('sichtbar');
+  }
+
+  function renderZeitachse() {
+    const hoehe = tagHoehePx();
+    const achse = document.getElementById('zeitachse');
+    document.getElementById('raster-lukas').style.height = hoehe + 'px';
+    document.getElementById('raster-andy').style.height = hoehe + 'px';
+    achse.style.height = hoehe + 'px';
+    achse.innerHTML = '';
+    for (let std = TAG_START_STUNDE; std <= TAG_END_STUNDE; std++) {
+      const label = document.createElement('div');
+      label.className = 'stunde-label';
+      label.style.top = ((std - TAG_START_STUNDE) * 60 * PX_PRO_MINUTE) + 'px';
+      label.textContent = String(std).padStart(2, '0') + ':00';
+      achse.appendChild(label);
+    }
+  }
 
   function isoDatum(d) {
     const jahr = d.getFullYear();
@@ -301,6 +439,7 @@
   function zeigeApp() {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
+    renderZeitachse();
     renderDatum();
     ladeTermine();
   }
@@ -331,37 +470,54 @@
       .eq('datum', datum)
       .order('startzeit', { ascending: true });
 
-    const listeLukas = document.getElementById('liste-lukas');
-    const listeAndy = document.getElementById('liste-andy');
+    const listeLukas = document.getElementById('raster-lukas');
+    const listeAndy = document.getElementById('raster-andy');
     listeLukas.innerHTML = '';
     listeAndy.innerHTML = '';
 
     if (error) {
-      listeLukas.innerHTML = `<div class="termin-leer">Fehler beim Laden: ${error.message}</div>`;
+      const fehlerHtml = `<div style="padding:8px;color:#DC2626;font-size:12px;">Fehler beim Laden: ${error.message}</div>`;
+      listeLukas.innerHTML = fehlerHtml;
       return;
     }
-    if (!data || data.length === 0) {
-      listeLukas.innerHTML = '<div class="termin-leer">Keine Termine</div>';
-      listeAndy.innerHTML = '<div class="termin-leer">Keine Termine</div>';
-      return;
-    }
+    if (!data) return;
 
     data.forEach(t => {
       const block = document.createElement('div');
       block.className = 'termin-block';
-      block.onclick = () => oeffneBearbeitenModal(t);
+      block.onclick = () => { versteckeTooltip(); oeffneBearbeitenModal(t); };
+      block.addEventListener('mouseenter', (e) => zeigeTooltip(e, t));
+      block.addEventListener('mouseleave', versteckeTooltip);
       const start = t.startzeit.slice(0, 5);
-      block.innerHTML = `
-        <div class="zeit">${start} Uhr &middot; ${t.dauer_minuten} Min</div>
-        <div class="meta">Raum ${t.raum} &middot; ${t.behandlungstyp}</div>
-        <div class="meta">${t.patientenname}</div>
-      `;
+      const top = minutenSeitTagesstart(t.startzeit) * PX_PRO_MINUTE;
+      const hoehe = Math.max(t.dauer_minuten * PX_PRO_MINUTE, 20);
+      block.style.top = top + 'px';
+      block.style.height = hoehe + 'px';
+
+      if (hoehe >= 50) {
+        // genug Platz: volle Ansicht, 3 Zeilen
+        block.innerHTML = `
+          <div class="zeit">${start} &middot; ${t.dauer_minuten} Min</div>
+          <div class="meta">Raum ${t.raum} &middot; ${t.behandlungstyp}</div>
+          <div class="meta">${t.patientenname}</div>
+        `;
+      } else if (hoehe >= 36) {
+        // mittel: 2 Zeilen
+        block.innerHTML = `
+          <div class="zeit">${start} &middot; ${t.patientenname}</div>
+          <div class="meta">Raum ${t.raum} &middot; ${t.behandlungstyp}</div>
+        `;
+      } else {
+        // wenig Platz: eine Zeile, zentriert, sauber abgeschnitten statt hart geclippt
+        block.classList.add('kompakt');
+        block.innerHTML = `
+          <span class="zeit">${start}</span>
+          <span class="kompakt-rest"><span class="typ">${kurzBehandlung(t.behandlungstyp)}</span> &middot; ${t.patientenname}</span>
+        `;
+      }
       if (t.therapeut === 'Lukas') listeLukas.appendChild(block);
       else listeAndy.appendChild(block);
     });
-
-    if (!listeLukas.hasChildNodes()) listeLukas.innerHTML = '<div class="termin-leer">Keine Termine</div>';
-    if (!listeAndy.hasChildNodes()) listeAndy.innerHTML = '<div class="termin-leer">Keine Termine</div>';
   }
 
   // ---- Neuer Termin / Bearbeiten ----
