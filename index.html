@@ -148,7 +148,10 @@
     border-radius: 10px;
     padding: 8px 12px;
     font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
   }
+  .termin-block:hover { background: #ECEBFF; }
   .termin-block .zeit { font-weight: 700; }
   .termin-block .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
 
@@ -178,6 +181,7 @@
   .modal-buttons { display: flex; gap: 10px; margin-top: 18px; }
   .modal-buttons button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; }
   .modal-buttons .save-btn { border: none; background: linear-gradient(90deg, var(--blau), var(--pink)); color: white; font-weight: 600; }
+  .modal-buttons .delete-btn { border: 1px solid #FCA5A5; color: #DC2626; background: white; flex: 0 0 auto; width: 44px; }
   #modal-error { color: #DC2626; font-size: 12px; margin-top: 8px; min-height: 14px; }
 </style>
 </head>
@@ -218,7 +222,8 @@
 
 <div id="modal-overlay" class="hidden">
   <div id="modal">
-    <h3>Neuer Termin</h3>
+    <h3 id="modal-titel">Neuer Termin</h3>
+    <input type="hidden" id="modal-id">
     <input type="hidden" id="modal-therapeut">
     <label>Uhrzeit</label>
     <input type="time" id="modal-startzeit">
@@ -242,6 +247,7 @@
     <input type="text" id="modal-patient" placeholder="Name">
     <div id="modal-error"></div>
     <div class="modal-buttons">
+      <button id="modal-delete-btn" class="delete-btn hidden" onclick="termineLoeschen()" title="Termin löschen">&#128465;</button>
       <button onclick="schliesseModal()">Abbrechen</button>
       <button class="save-btn" onclick="termineSpeichern()">Speichern</button>
     </div>
@@ -343,6 +349,7 @@
     data.forEach(t => {
       const block = document.createElement('div');
       block.className = 'termin-block';
+      block.onclick = () => oeffneBearbeitenModal(t);
       const start = t.startzeit.slice(0, 5);
       block.innerHTML = `
         <div class="zeit">${start} Uhr &middot; ${t.dauer_minuten} Min</div>
@@ -357,9 +364,31 @@
     if (!listeAndy.hasChildNodes()) listeAndy.innerHTML = '<div class="termin-leer">Keine Termine</div>';
   }
 
-  // ---- Neuer Termin ----
+  // ---- Neuer Termin / Bearbeiten ----
   function oeffneModal(therapeut) {
+    document.getElementById('modal-id').value = '';
+    document.getElementById('modal-titel').textContent = 'Neuer Termin';
+    document.getElementById('modal-delete-btn').classList.add('hidden');
     document.getElementById('modal-therapeut').value = therapeut;
+    document.getElementById('modal-startzeit').value = '';
+    document.getElementById('modal-behandlungstyp').selectedIndex = 0;
+    document.getElementById('modal-dauer').value = 20;
+    document.getElementById('modal-raum').selectedIndex = 0;
+    document.getElementById('modal-patient').value = '';
+    document.getElementById('modal-error').textContent = '';
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function oeffneBearbeitenModal(termin) {
+    document.getElementById('modal-id').value = termin.id;
+    document.getElementById('modal-titel').textContent = 'Termin bearbeiten';
+    document.getElementById('modal-delete-btn').classList.remove('hidden');
+    document.getElementById('modal-therapeut').value = termin.therapeut;
+    document.getElementById('modal-startzeit').value = termin.startzeit.slice(0, 5);
+    document.getElementById('modal-behandlungstyp').value = termin.behandlungstyp;
+    document.getElementById('modal-dauer').value = termin.dauer_minuten;
+    document.getElementById('modal-raum').value = termin.raum;
+    document.getElementById('modal-patient').value = termin.patientenname;
     document.getElementById('modal-error').textContent = '';
     document.getElementById('modal-overlay').classList.remove('hidden');
   }
@@ -375,6 +404,7 @@
   }
 
   async function termineSpeichern() {
+    const id = document.getElementById('modal-id').value;
     const therapeut = document.getElementById('modal-therapeut').value;
     const startzeit = document.getElementById('modal-startzeit').value;
     const behandlungstyp = document.getElementById('modal-behandlungstyp').value;
@@ -388,7 +418,7 @@
       return;
     }
 
-    const { error } = await db.from('termine').insert({
+    const datensatz = {
       datum: isoDatum(ausgewaehltesDatum),
       startzeit,
       dauer_minuten,
@@ -396,14 +426,31 @@
       therapeut,
       patientenname,
       behandlungstyp
-    });
+    };
+
+    const { error } = id
+      ? await db.from('termine').update(datensatz).eq('id', id)
+      : await db.from('termine').insert(datensatz);
 
     if (error) {
       fehlerEl.textContent = 'Fehler: ' + error.message;
       return;
     }
     schliesseModal();
-    document.getElementById('modal-patient').value = '';
+    ladeTermine();
+  }
+
+  async function termineLoeschen() {
+    const id = document.getElementById('modal-id').value;
+    if (!id) return;
+    if (!confirm('Diesen Termin wirklich löschen?')) return;
+    const { error } = await db.from('termine').delete().eq('id', id);
+    const fehlerEl = document.getElementById('modal-error');
+    if (error) {
+      fehlerEl.textContent = 'Fehler: ' + error.message;
+      return;
+    }
+    schliesseModal();
     ladeTermine();
   }
 
