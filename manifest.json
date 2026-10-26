@@ -1,0 +1,26 @@
+{
+  "name": "Bergbauer Physiotherapie – Terminkalender",
+  "short_name": "Terminkalender",
+  "description": "Terminkalender für die Praxis Bergbauer Physiotherapie",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FAFAFB",
+  "theme_color": "#4F46E5",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
