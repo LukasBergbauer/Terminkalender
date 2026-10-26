@@ -1,0 +1,53 @@
+// Service Worker für den Terminkalender.
+// Zweck: macht die Seite auf Handy/Desktop installierbar (Voraussetzung dafür).
+// Der Kalender braucht für echte Daten ohnehin eine Internetverbindung (Supabase),
+// deshalb hier bewusst KEIN komplexes Offline-Caching von Daten – nur die
+// Oberfläche (index.html, manifest, Icons) wird zwischengespeichert, damit die
+// App auch bei kurzzeitig schlechter Verbindung sofort startet.
+
+const CACHE_NAME = 'terminkalender-shell-v1';
+const SHELL_DATEIEN = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(SHELL_DATEIEN))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((namen) => Promise.all(
+        namen.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))
+      ))
+      .then(() => self.clients.claim())
+  );
+});
+
+// Nur eigene (same-origin) Anfragen für die Oberfläche behandeln – alles
+// andere (v.a. Supabase-API-Aufrufe, Google Fonts) unangetastet durchreichen,
+// damit Login/Daten nie vom Service Worker beeinflusst werden.
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin || event.request.method !== 'GET') {
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then((antwort) => {
+        const kopie = antwort.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, kopie));
+        return antwort;
+      })
+      .catch(() => caches.match(event.request).then((treffer) => treffer || caches.match('./index.html')))
+  );
+});
