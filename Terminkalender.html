@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Praxis Terminkalender</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --blau: #4F46E5;
+    --violett: #9333EA;
+    --pink: #EC4899;
+    --bg: #FAFAFB;
+    --card: #FFFFFF;
+    --text: #1F2937;
+    --muted: #6B7280;
+    --border: #E5E7EB;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .hidden { display: none !important; }
+
+  /* Login */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #login-box {
+    background: var(--card);
+    padding: 40px;
+    border-radius: var(--radius);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    width: 320px;
+    text-align: center;
+  }
+  #login-box h1 {
+    font-size: 20px;
+    margin-bottom: 24px;
+    background: linear-gradient(90deg, var(--blau), var(--violett), var(--pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  #login-box input {
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  #login-box button, .primary-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--blau), var(--pink));
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  #login-box button:hover, .primary-btn:hover { opacity: 0.9; }
+  #login-error { color: #DC2626; font-size: 13px; margin-top: 10px; min-height: 16px; }
+
+  /* App shell */
+  #app { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .date-nav { display: flex; align-items: center; gap: 10px; }
+  .date-nav button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 36px; height: 36px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  #heute-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0 14px;
+    height: 36px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--violett);
+  }
+  #aktuelles-datum { font-size: 18px; font-weight: 600; min-width: 220px; text-align: center; }
+  #logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .spalten { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 640px) { .spalten { grid-template-columns: 1fr; } }
+
+  .spalte {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  }
+  .spalte h2 {
+    font-size: 15px;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .spalte h2 .add-btn {
+    background: linear-gradient(90deg, var(--blau), var(--pink));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    width: 26px; height: 26px;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+  }
+  .termin-liste { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+  .termin-leer { color: var(--muted); font-size: 13px; padding: 10px 0; }
+
+  .termin-block {
+    border-left: 4px solid var(--violett);
+    background: #F6F5FF;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .termin-block .zeit { font-weight: 700; }
+  .termin-block .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  /* Modal */
+  #modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  #modal {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 26px;
+    width: 340px;
+    max-width: 100%;
+  }
+  #modal h3 { margin-top: 0; font-size: 16px; }
+  #modal label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  #modal input, #modal select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  .modal-buttons { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-buttons button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; }
+  .modal-buttons .save-btn { border: none; background: linear-gradient(90deg, var(--blau), var(--pink)); color: white; font-weight: 600; }
+  #modal-error { color: #DC2626; font-size: 12px; margin-top: 8px; min-height: 14px; }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div id="login-box">
+    <h1>Praxis Terminkalender</h1>
+    <input type="email" id="login-email" placeholder="E-Mail">
+    <input type="password" id="login-password" placeholder="Passwort">
+    <button onclick="login()">Anmelden</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="date-nav">
+      <button onclick="aenderDatum(-1)">&#8592;</button>
+      <div id="aktuelles-datum"></div>
+      <button onclick="aenderDatum(1)">&#8594;</button>
+      <button id="heute-btn" onclick="gehZuHeute()">Heute</button>
+    </div>
+    <button id="logout-btn" onclick="logout()">Abmelden</button>
+  </header>
+
+  <div class="spalten">
+    <div class="spalte">
+      <h2>Lukas <button class="add-btn" onclick="oeffneModal('Lukas')">+</button></h2>
+      <div class="termin-liste" id="liste-lukas"></div>
+    </div>
+    <div class="spalte">
+      <h2>Andy <button class="add-btn" onclick="oeffneModal('Andy')">+</button></h2>
+      <div class="termin-liste" id="liste-andy"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-overlay" class="hidden">
+  <div id="modal">
+    <h3>Neuer Termin</h3>
+    <input type="hidden" id="modal-therapeut">
+    <label>Uhrzeit</label>
+    <input type="time" id="modal-startzeit">
+    <label>Behandlungstyp</label>
+    <select id="modal-behandlungstyp" onchange="behandlungAuswahl()">
+      <option value="20 Min KG" data-dauer="20">20 Min KG</option>
+      <option value="45 Min Lymphdrainage" data-dauer="45">45 Min Lymphdrainage</option>
+      <option value="60 Min Lymphdrainage" data-dauer="60">60 Min Lymphdrainage</option>
+      <option value="Sonstige" data-dauer="">Sonstige</option>
+    </select>
+    <label>Dauer (Minuten)</label>
+    <input type="number" id="modal-dauer" value="20">
+    <label>Raum</label>
+    <select id="modal-raum">
+      <option value="1">Raum 1</option>
+      <option value="2">Raum 2</option>
+      <option value="3">Raum 3</option>
+      <option value="4">Raum 4</option>
+    </select>
+    <label>Patient</label>
+    <input type="text" id="modal-patient" placeholder="Name">
+    <div id="modal-error"></div>
+    <div class="modal-buttons">
+      <button onclick="schliesseModal()">Abbrechen</button>
+      <button class="save-btn" onclick="termineSpeichern()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://wcshsfxsrahufatxisxy.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_GnYu_dMxZNdyzm1AyNbW-Q_ar0-TO1y';
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let ausgewaehltesDatum = new Date(); // reallife "heute" als Start
+
+  function isoDatum(d) {
+    const jahr = d.getFullYear();
+    const monat = String(d.getMonth() + 1).padStart(2, '0');
+    const tag = String(d.getDate()).padStart(2, '0');
+    return `${jahr}-${monat}-${tag}`;
+  }
+
+  function formatierterTitel(d) {
+    return d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  // ---- Auth ----
+  async function login() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    document.getElementById('login-error').textContent = '';
+    const { error } = await db.auth.signInWithPassword({ email, password });
+    if (error) {
+      document.getElementById('login-error').textContent = 'Anmeldung fehlgeschlagen: ' + error.message;
+      return;
+    }
+    zeigeApp();
+  }
+
+  async function logout() {
+    await db.auth.signOut();
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
+  }
+
+  async function pruefeSession() {
+    const { data } = await db.auth.getSession();
+    if (data.session) {
+      zeigeApp();
+    }
+  }
+
+  function zeigeApp() {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    renderDatum();
+    ladeTermine();
+  }
+
+  // ---- Datum / Navigation ----
+  function renderDatum() {
+    document.getElementById('aktuelles-datum').textContent = formatierterTitel(ausgewaehltesDatum);
+  }
+
+  function aenderDatum(deltaTage) {
+    ausgewaehltesDatum.setDate(ausgewaehltesDatum.getDate() + deltaTage);
+    renderDatum();
+    ladeTermine();
+  }
+
+  function gehZuHeute() {
+    ausgewaehltesDatum = new Date();
+    renderDatum();
+    ladeTermine();
+  }
+
+  // ---- Termine laden & anzeigen ----
+  async function ladeTermine() {
+    const datum = isoDatum(ausgewaehltesDatum);
+    const { data, error } = await db
+      .from('termine')
+      .select('*')
+      .eq('datum', datum)
+      .order('startzeit', { ascending: true });
+
+    const listeLukas = document.getElementById('liste-lukas');
+    const listeAndy = document.getElementById('liste-andy');
+    listeLukas.innerHTML = '';
+    listeAndy.innerHTML = '';
+
+    if (error) {
+      listeLukas.innerHTML = `<div class="termin-leer">Fehler beim Laden: ${error.message}</div>`;
+      return;
+    }
+    if (!data || data.length === 0) {
+      listeLukas.innerHTML = '<div class="termin-leer">Keine Termine</div>';
+      listeAndy.innerHTML = '<div class="termin-leer">Keine Termine</div>';
+      return;
+    }
+
+    data.forEach(t => {
+      const block = document.createElement('div');
+      block.className = 'termin-block';
+      const start = t.startzeit.slice(0, 5);
+      block.innerHTML = `
+        <div class="zeit">${start} Uhr &middot; ${t.dauer_minuten} Min</div>
+        <div class="meta">Raum ${t.raum} &middot; ${t.behandlungstyp}</div>
+        <div class="meta">${t.patientenname}</div>
+      `;
+      if (t.therapeut === 'Lukas') listeLukas.appendChild(block);
+      else listeAndy.appendChild(block);
+    });
+
+    if (!listeLukas.hasChildNodes()) listeLukas.innerHTML = '<div class="termin-leer">Keine Termine</div>';
+    if (!listeAndy.hasChildNodes()) listeAndy.innerHTML = '<div class="termin-leer">Keine Termine</div>';
+  }
+
+  // ---- Neuer Termin ----
+  function oeffneModal(therapeut) {
+    document.getElementById('modal-therapeut').value = therapeut;
+    document.getElementById('modal-error').textContent = '';
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function schliesseModal() {
+    document.getElementById('modal-overlay').classList.add('hidden');
+  }
+
+  function behandlungAuswahl() {
+    const sel = document.getElementById('modal-behandlungstyp');
+    const dauer = sel.selectedOptions[0].dataset.dauer;
+    if (dauer) document.getElementById('modal-dauer').value = dauer;
+  }
+
+  async function termineSpeichern() {
+    const therapeut = document.getElementById('modal-therapeut').value;
+    const startzeit = document.getElementById('modal-startzeit').value;
+    const behandlungstyp = document.getElementById('modal-behandlungstyp').value;
+    const dauer_minuten = parseInt(document.getElementById('modal-dauer').value, 10);
+    const raum = parseInt(document.getElementById('modal-raum').value, 10);
+    const patientenname = document.getElementById('modal-patient').value.trim();
+    const fehlerEl = document.getElementById('modal-error');
+
+    if (!startzeit || !patientenname || !dauer_minuten) {
+      fehlerEl.textContent = 'Bitte Uhrzeit, Dauer und Patientenname ausfüllen.';
+      return;
+    }
+
+    const { error } = await db.from('termine').insert({
+      datum: isoDatum(ausgewaehltesDatum),
+      startzeit,
+      dauer_minuten,
+      raum,
+      therapeut,
+      patientenname,
+      behandlungstyp
+    });
+
+    if (error) {
+      fehlerEl.textContent = 'Fehler: ' + error.message;
+      return;
+    }
+    schliesseModal();
+    document.getElementById('modal-patient').value = '';
+    ladeTermine();
+  }
+
+  pruefeSession();
+</script>
+</body>
+</html>
