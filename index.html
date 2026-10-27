@@ -143,7 +143,10 @@
   #login-error { color: #DC2626; font-size: 13px; margin-top: 10px; min-height: 16px; }
 
   /* App shell */
-  #app { max-width: 1320px; margin: 0 auto; padding: 24px 16px 60px; animation: app-einblenden 0.35s ease; }
+  #app { max-width: 1320px; margin: 0 auto; padding: 24px 16px 60px; animation: app-einblenden 0.35s ease; transition: max-width 0.15s ease; }
+  /* Vergleichsansicht zeigt zwei Tage nebeneinander – braucht mehr Breite als die normale
+     Tagesansicht, damit die Spalten nicht zu schmal werden und unnötig oft umbrechen. */
+  #app.vergleich-breit { max-width: 1760px; }
   @keyframes app-einblenden { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .app-layout { display: flex; gap: 20px; align-items: flex-start; }
   .hauptbereich { flex: 1; min-width: 0; }
@@ -212,7 +215,9 @@
     width: 22px; height: 22px;
   }
   .mini-kalender-wochentage, .mini-kalender-tage {
-    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+    /* 5 statt 7 Spalten: Sa/So werden komplett nicht mehr angezeigt (Praxis hat am
+       Wochenende nie geöffnet, siehe "Wochenende komplett entfernt" weiter unten) */
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
   }
   .mini-kalender-wochentage span {
     font-size: 10px; color: var(--muted); text-align: center; padding-bottom: 4px;
@@ -421,6 +426,7 @@
      mit der normalen Lane (siehe terminNutztEigeneSpalte in JS). */
   .lane { position: relative; height: 100%; min-width: 0; }
   .lane-normal { flex: 1 1 auto; }
+  #raster-lukas-normal, #raster-andy-normal { cursor: copy; }
   .lane-fango { flex: 0 0 36%; border-left: 1px dashed var(--border); transition: flex-basis 0.15s ease; }
   .lane-fango .termin-block { font-size: 12px; padding: 3px 7px; }
   .lane-fango .termin-block .meta { font-size: 11px; }
@@ -445,6 +451,16 @@
     z-index: 1;
     transition: box-shadow 0.15s, background 0.15s, filter 0.15s;
     user-select: none;
+    /* Dünne, nach innen gesetzte Trennlinie am oberen Blockrand (seit 2026-10-27, zehnter
+       Durchgang): bei direkt aufeinanderfolgenden Terminen in derselben Lane (kein Zeitabstand
+       dazwischen, oft sogar dieselbe Heilmittel-Farbe) sorgt sie dafür, dass die Blöcke trotzdem
+       "Schlag auf Schlag" klar auseinanderhaltbar bleiben, ohne eine optische Lücke einzuführen
+       (box-shadow nimmt keinen Platz im Layout ein, verändert also nicht die exakte
+       Zeitraster-Höhe). Wirkt bei einzeln stehenden Blöcken unauffällig am oberen Rand mit.
+       Status-Varianten unten kombinieren diesen Schatten mit ihrem eigenen seitlichen Akzent in
+       derselben box-shadow-Deklaration, da eine neue box-shadow-Regel die vorherige sonst
+       komplett ersetzt statt zu ergänzen. */
+    box-shadow: inset 0 2px 0 0 rgba(31,41,55,0.12);
   }
   .termin-block:hover {
     background: color-mix(in srgb, var(--termin-farbe) 24%, white);
@@ -474,8 +490,8 @@
   .termin-block .block-loesch-btn svg { width: 13px; height: 13px; }
   /* Terminstatus: erschienen/abgesagt/nicht erschienen – überlagert die Behandlungsfarbe optisch leicht */
   .termin-block.status-abgesagt { opacity: 0.5; text-decoration: line-through; }
-  .termin-block.status-nicht_erschienen { box-shadow: inset 3px 0 0 #DC2626; }
-  .termin-block.status-erschienen { box-shadow: inset 3px 0 0 #16A34A; }
+  .termin-block.status-nicht_erschienen { box-shadow: inset 3px 0 0 #DC2626, inset 0 2px 0 0 rgba(31,41,55,0.12); }
+  .termin-block.status-erschienen { box-shadow: inset 3px 0 0 #16A34A, inset 0 2px 0 0 rgba(31,41,55,0.12); }
   .status-icon { margin-left: 3px; }
   .status-wahl { display: flex; gap: 6px; margin-top: 6px; }
   .status-wahl button {
@@ -509,21 +525,38 @@
      Wörter nötigenfalls selbst umbrechen (overflow-wrap). */
   .termin-block .zeile-haupt {
     display: flex; align-items: baseline; gap: 3px 6px; flex-wrap: wrap;
-    font-size: 14.5px; font-weight: 700; color: var(--text); line-height: 1.3;
+    /* --block-schrift wird per JS (schrumpfeBlockSchrift) reduziert, wenn der Block sonst in
+       den nächsten Termin hineinlaufen würde – siehe dort. */
+    font-size: var(--block-schrift, 14.5px); font-weight: 700; color: var(--text); line-height: 1.3;
     overflow: hidden; /* Sicherheitsnetz: nichts darf aus dem Block heraus in Nachbar-Termine laufen */
   }
-  .termin-block .zeile-haupt .zeit { font-weight: 700; color: var(--text); flex-shrink: 0; }
+  /* Feste Mindestbreiten für Uhrzeit und Kürzel-Badge (seit 2026-10-27, elfter Durchgang): ohne
+     das startete der Patientenname je nach Länge von Uhrzeit/Kürzel ("KG" vs. "KPE 30") an einer
+     unterschiedlichen horizontalen Position – bei direkt untereinanderstehenden Terminen wirkte
+     das uneinheitlich/"ausgefranst". Beide Breiten in `em` (bzw. `ch` bei der Uhrzeit, da reine
+     Ziffern) relativ zur jeweils eigenen, lokal ggf. geschrumpften Schriftgröße angegeben, damit
+     die Ausrichtung auch bei automatisch verkleinerter Schrift (siehe --block-schrift) konsistent
+     bleibt. Längere Kürzel als "KPE 30" wachsen weiterhin über die Mindestbreite hinaus, statt
+     abgeschnitten zu werden. */
+  .termin-block .zeile-haupt .zeit { font-weight: 700; color: var(--text); flex-shrink: 0; min-width: 5ch; }
   .termin-block .zeile-haupt .kuerzel {
-    font-weight: 700; font-size: 12.5px; color: var(--termin-farbe);
+    font-weight: 700; font-size: 0.86em; color: var(--termin-farbe);
     background: color-mix(in srgb, var(--termin-farbe) 16%, white);
-    border-radius: 5px; padding: 1px 7px;
-    min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+    border-radius: 5px; padding: 1px 7px; text-align: center; box-sizing: border-box;
+    min-width: 4.6em; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
   }
   .termin-block .zeile-haupt .name {
     font-weight: 700; white-space: normal; overflow-wrap: anywhere;
     flex: 1 1 auto; min-width: 0; max-width: 100%;
   }
   .termin-block .zeile-haupt .icon-mini, .termin-block .zeile-haupt .status-icon { flex-shrink: 0; }
+  /* Letzter Ausweg bei extrem kurzen, eng aufeinanderfolgenden Terminen mit langem Namen, bei
+     denen selbst die kleinste Schrift (siehe schrumpfeBlockSchriftInLane) nicht mehr ausreicht:
+     Kürzel/Name werden einzeilig mit "…" abgeschnitten, damit der Block garantiert nicht mehr in
+     den nächsten Termin hineinläuft. Vollständiger Name bleibt über Hover/Klick abrufbar. */
+  .termin-block.einzeiler .zeile-haupt { flex-wrap: nowrap; }
+  .termin-block.einzeiler .zeile-haupt .kuerzel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70px; flex-shrink: 0; }
+  .termin-block.einzeiler .zeile-haupt .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .termin-block.kompakt {
     display: flex;
     align-items: flex-start; /* statt center: zusätzliche umgebrochene Zeilen wachsen nach
@@ -564,6 +597,10 @@
     color: var(--muted); margin-bottom: 4px;
   }
   .termin-block .meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  /* Ruhezustand: nur Zeit/Heilmittel/Name (Haupt-Zeile) sichtbar, die Meta-Zeile (Raum,
+     Behandlungstyp, Dauer) erst beim Hovern einblenden – hält die Kalenderübersicht ruhiger. */
+  .termin-block .meta { display: none; }
+  .termin-block:hover .meta, .termin-block.ausgewaehlt .meta { display: block; }
 
   /* Modal */
   #modal-overlay, #patient-modal-overlay, #verordnung-modal-overlay, #warteliste-modal-overlay, #vorschau-modal-overlay {
@@ -600,6 +637,35 @@
     z-index: 60;
   }
   .zeit-indikator.sichtbar { opacity: 1; }
+  /* Lineal mit 5-Minuten-Strichen, erscheint rechts neben dem Termin-Block während des
+     Dauer-Ziehens (Resize), damit man die neue Dauer besser abschätzen kann. */
+  .resize-lineal {
+    position: fixed;
+    width: 9px;
+    pointer-events: none;
+    z-index: 55;
+  }
+  .resize-lineal .tick {
+    position: absolute;
+    left: 0;
+    width: 5px;
+    height: 1px;
+    background: var(--border);
+  }
+  .resize-lineal .tick.gross { width: 9px; background: var(--muted); }
+  .resize-dauer-indikator {
+    position: fixed;
+    transform: translateY(-50%);
+    background: linear-gradient(90deg, var(--blau), var(--pink));
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 60;
+  }
   #modal, #patient-modal, #verordnung-modal, #warteliste-modal, #vorschau-modal {
     background: var(--card);
     border-radius: 18px;
@@ -762,22 +828,63 @@
   .statistik-balken { height: 100%; border-radius: 20px; background: linear-gradient(90deg, var(--blau), var(--violett), var(--pink)); transition: width 0.4s ease; }
 
   .woche-umschalter { display: flex; gap: 2px; background: var(--card); border-radius: 14px; box-shadow: var(--schatten-sm); padding: 6px; }
-  .woche-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
-  @media (max-width: 960px) { .woche-grid { grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); } }
-  .woche-tag-karte { background: var(--card); border-radius: 14px; box-shadow: var(--schatten-sm); padding: 10px; min-height: 120px; }
-  .woche-tag-karte.heute { box-shadow: 0 0 0 2px var(--violett), var(--schatten-sm); }
-  .woche-tag-kopf { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  /* Wochenansicht: Hover-Akkordeon mit 7 Spalten nebeneinander. Im Ruhezustand (keine Spalte
+     gehovert/angepinnt) sind alle 7 Tage gleich breit und zeigen ihren vollen Tagesplan. Sobald
+     man mit der Maus über eine Spalte fährt, wächst NUR diese auf den Großteil der Breite, die
+     anderen 6 schrumpfen auf einen schmalen Streifen (Wochentag + Datum + Terminanzahl). Bewegt
+     man die Maus auf einen der schmalen Streifen, wird DER zur großen Spalte, die vorherige
+     minimiert sich wieder – rein über CSS :hover gelöst (kein Re-Render nötig). Die ".aktiv"/
+     ".akkordeon-aktiv"-Klassen spiegeln denselben Zustand per Klick, damit es auch auf
+     Touch-Geräten ohne echtes Hover funktioniert. */
+  .woche-grid { display: flex; gap: 8px; align-items: stretch; height: calc(100vh - 230px); min-height: 420px; }
+  @media (max-width: 960px) { .woche-grid { height: auto; flex-wrap: wrap; } .woche-tag-spalte { flex-basis: 150px !important; min-height: 160px; } }
+  .woche-tag-spalte {
+    flex: 1 1 0; min-width: 0; background: var(--card); border-radius: 14px; box-shadow: var(--schatten-sm);
+    overflow: hidden; transition: flex 0.25s ease; cursor: pointer; display: flex; flex-direction: column;
+  }
+  .woche-tag-spalte.heute { box-shadow: 0 0 0 2px var(--violett), var(--schatten-sm); }
+  .woche-grid:hover .woche-tag-spalte { flex: 0 0 64px; }
+  .woche-grid:hover .woche-tag-spalte:hover { flex: 6 1 0; }
+  .woche-grid.akkordeon-aktiv .woche-tag-spalte:not(.aktiv) { flex: 0 0 64px; }
+  .woche-grid.akkordeon-aktiv .woche-tag-spalte.aktiv { flex: 6 1 0; }
+
+  .woche-tag-voll { padding: 10px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; min-width: 220px; }
+  .woche-grid:hover .woche-tag-spalte:not(:hover) .woche-tag-voll,
+  .woche-grid.akkordeon-aktiv .woche-tag-spalte:not(.aktiv) .woche-tag-voll { display: none; }
+  .woche-tag-kopf { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; white-space: nowrap; }
   .woche-tag-kopf .tag-zahl { color: var(--muted); font-weight: 500; }
+  /* Pro Tag in Andy/Lukas aufgeteilt (seit 2026-10-27, neunter Durchgang), analog zur
+     Spaltenreihenfolge überall sonst: Andy links, Lukas rechts. Nur wenn der Filter "Beide"
+     aktiv ist – bei "nur Andy"/"nur Lukas" bleibt es bei der einfachen flachen Liste, da die
+     zweite Spalte dann ohnehin leer wäre. */
+  .woche-tag-spalten-split { display: flex; gap: 10px; flex: 1; min-height: 0; }
+  .woche-tag-therapeut-spalte { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; }
+  .woche-tag-therapeut-label {
+    font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.03em; margin-bottom: 5px;
+  }
   .woche-termin {
     display: flex; align-items: baseline; gap: 5px;
     font-size: 11px; padding: 4px 6px; border-radius: 6px; margin-bottom: 4px;
     border-left: 3px solid var(--violett); background: #F6F5FF; cursor: pointer;
   }
-  .woche-termin.lukas { border-left-color: var(--blau); background: #EEF0FD; }
-  .woche-termin.andy { border-left-color: var(--pink); background: #FDF0F6; }
   .woche-termin .zeit { font-weight: 700; flex-shrink: 0; }
   .woche-termin .wer { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .woche-leer { font-size: 11px; color: var(--muted); }
+
+  .woche-tag-mini {
+    display: none; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+    flex: 1; padding: 10px 4px;
+  }
+  .woche-grid:hover .woche-tag-spalte:not(:hover) .woche-tag-mini,
+  .woche-grid.akkordeon-aktiv .woche-tag-spalte:not(.aktiv) .woche-tag-mini { display: flex; }
+  .woche-tag-mini .mini-wochentag { font-size: 12px; font-weight: 700; }
+  .woche-tag-mini .mini-datum { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .woche-tag-mini .mini-anzahl {
+    min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
+    background: linear-gradient(90deg, var(--blau), var(--pink));
+    color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
 
   .protokoll-liste { max-height: 260px; overflow-y: auto; }
   .checkup-box .checkup-intro { font-size: 12px; color: var(--muted); margin: 0 0 14px; }
@@ -802,7 +909,7 @@
   }
   .heilmittel-kopfzeile, .heilmittel-zeile {
     display: grid;
-    grid-template-columns: 1fr 80px 64px 44px 70px 32px;
+    grid-template-columns: 18px 1fr 80px 64px 44px 70px 32px;
     gap: 8px;
     align-items: start;
     margin-bottom: 12px;
@@ -810,9 +917,18 @@
   .heilmittel-kopfzeile { align-items: center; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
   .heilmittel-zeile > input, .heilmittel-zeile > .farbe-schwatch, .heilmittel-zeile > .heilmittel-aktiv-label, .heilmittel-zeile > .heilmittel-loesch-btn { margin-top: 1px; }
   @media (max-width: 640px) {
-    .heilmittel-kopfzeile, .heilmittel-zeile { grid-template-columns: 1fr 1fr; }
+    .heilmittel-kopfzeile, .heilmittel-zeile { grid-template-columns: 18px 1fr 1fr; }
     .heilmittel-kopfzeile { display: none; }
   }
+  /* Drag-Griff zum Neuanordnen der Heilmittel-Liste (bestimmt die Reihenfolge im Dropdown) */
+  .heilmittel-drag-griff {
+    display: flex; align-items: center; justify-content: center;
+    width: 18px; height: 28px; margin-top: 1px; color: var(--muted); cursor: grab; touch-action: none;
+  }
+  .heilmittel-drag-griff:active { cursor: grabbing; }
+  .heilmittel-drag-griff svg { width: 13px; height: 13px; }
+  .heilmittel-zeile.dragging { opacity: 0.4; }
+  .heilmittel-zeile.drop-vor { outline: 2px dashed var(--violett); outline-offset: -2px; border-radius: 8px; }
   .heilmittel-zeile input[type="text"], .heilmittel-zeile input[type="number"] {
     padding: 6px 7px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; width: 100%;
     font-family: inherit;
@@ -912,7 +1028,9 @@
   .warteliste-zeile:last-child { border-bottom: none; }
   .warteliste-notiz { color: var(--muted); font-size: 11px; margin-top: 2px; }
 
-  #druck-ansicht { display: none; }
+  /* Druck-Kopf (Titel + Datum) steht im normalen Layout unsichtbar über dem Tagesraster – nur
+     im @media print-Block unten wird er eingeblendet (siehe druckeTagesplan()). */
+  #druck-kopf { display: none; }
   .druck-btn {
     background: none; border: 1px solid var(--border); border-radius: 10px;
     width: 38px; height: 38px; cursor: pointer; color: var(--muted);
@@ -935,7 +1053,13 @@
      Tagesansicht (gleiche Blöcke, gleiche Lesbarkeits-Stufen), nur schmaler/kürzer skaliert, damit
      zwei Tage nebeneinander passen. Termine können hier direkt angelegt und bearbeitet werden. */
   .vergleich-tag { display: flex; gap: 8px; }
-  .vergleich-zeitachse { position: relative; width: 38px; flex: 0 0 38px; }
+  /* Die Zeitachse braucht denselben unsichtbaren Platzhalter wie die Therapeuten-Köpfe
+     (.vergleich-therapeut-kopf) über sich, sonst startet "07:00" optisch weiter oben als die
+     eigentliche Raster-Zeile 07:00 (die durch den Lukas/Andy-Kopf nach unten verschoben wird) –
+     dadurch lief "07:00" vorher in den Kartenrand/"Dieser Tag"-Kopf hinein und wurde abgeschnitten. */
+  .vergleich-zeitachse-spalte { display: flex; flex-direction: column; flex: 0 0 38px; }
+  .vergleich-zeitachse-spalte .vergleich-therapeut-kopf { visibility: hidden; }
+  .vergleich-zeitachse { position: relative; width: 38px; flex: 1 1 auto; }
   .vergleich-zeitachse .stunde-label {
     position: absolute; right: 4px; transform: translateY(-50%);
     font-size: 11px; color: var(--muted); white-space: nowrap;
@@ -957,8 +1081,10 @@
   }
   .vergleich-raster .lane-normal { cursor: copy; }
   .vergleich-raster .termin-block { cursor: grab; }
-  /* Drag&Drop eines Termins von einem Vergleichstag auf den anderen */
-  .vergleich-raster .lane.drop-ziel { background: color-mix(in srgb, var(--violett) 10%, #FBFBFC); outline: 2px dashed var(--violett); outline-offset: -2px; }
+  /* Drag&Drop eines Termins von einem Vergleichstag auf den anderen (bzw. frei innerhalb eines
+     Tages): seit 2026-10-27 (neunter Durchgang) KEIN flächiges Lane-Highlight mehr – stattdessen
+     wie in der Tagesansicht der schwebende #zeit-indikator mit der exakten Ziel-Uhrzeit (siehe
+     zeigeVergleichZeitIndikator). */
   .termin-block.vergleich-dragging { opacity: 0.4; }
   .vergleich-tag-nav { display: flex; align-items: center; gap: 2px; }
   .vergleich-tag-nav button {
@@ -1026,15 +1152,36 @@
   .hausbesuch-karte .zeit { font-weight: 700; font-size: 13px; }
   .hausbesuch-karte .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .hausbesuch-karte .adresse { font-size: 12px; color: var(--text); margin-top: 4px; }
+  /* Drucken: statt eines separaten Schreibdokuments (alte Tabellen-Ansicht) wird jetzt der
+     echte, farbige Tageskalender gedruckt – wie ein Screenshot des Bildschirms auf Papier.
+     Dafür bleibt die komplette App-Struktur im DOM, es werden nur gezielt Bedienelemente
+     ausgeblendet (Navigation, Buttons, Tooltips, Griffe) und Hintergrundfarben per
+     print-color-adjust erzwungen, da Browser diese beim Drucken sonst standardmäßig entfernen. */
   @media print {
+    @page { size: landscape; margin: 10mm; }
+    html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; }
     body::before { display: none; }
-    body > *:not(#druck-ansicht) { display: none !important; }
-    #druck-ansicht { display: block !important; }
-    #druck-ansicht h1 { font-size: 18px; margin-bottom: 2px; }
-    #druck-ansicht .druck-datum { color: #555; margin-bottom: 16px; font-size: 13px; }
-    #druck-ansicht table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    #druck-ansicht th, #druck-ansicht td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
-    #druck-ansicht th { background: #f3f3f3; }
+    #login-screen, .icon-rail, #ansicht-kalender > header, #status-leiste,
+    .woche-grid, .vergleich-grid, .statistik-karte,
+    #modal-overlay, #patient-modal-overlay, #verordnung-modal-overlay,
+    #warteliste-modal-overlay, #vorschau-modal-overlay,
+    .tooltip, .zeit-indikator, .resize-lineal, .resize-dauer-indikator,
+    .farbe-popover, .mini-kalender-popover {
+      display: none !important;
+    }
+    #druck-kopf { display: block !important; margin-bottom: 14px; }
+    #druck-kopf h1 { font-size: 18px; margin: 0 0 2px; }
+    #druck-kopf .druck-datum { color: #555; font-size: 13px; }
+    #app, #app.vergleich-breit { max-width: none; padding: 0; margin: 0; }
+    .app-layout { display: block; }
+    main.hauptbereich { padding: 0; }
+    #ansicht-kalender { padding: 0; }
+    /* Innerhalb der gedruckten Termin-Blöcke machen Lösch-/Resize-Griffe und der Hover-Rahmen
+       keinen Sinn (rein interaktiv) – alle drei Pflicht-Angaben (Zeit/Heilmittel/Name) bleiben
+       aber sichtbar, genau wie am Bildschirm. */
+    .termin-block .resize-griff, .termin-block .block-loesch-btn { display: none !important; }
+    .termin-block:hover { box-shadow: none; }
+    .tag-ansicht { break-inside: avoid; }
   }
 </style>
 </head>
@@ -1099,15 +1246,15 @@
                   <button onclick="miniKalenderMonatWechseln(1)">&#8594;</button>
                 </div>
                 <div class="mini-kalender-wochentage">
-                  <span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span>
+                  <span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span>
                 </div>
                 <div class="mini-kalender-tage" id="mini-kalender-tage"></div>
               </div>
             </div>
             <div class="filter-pille" id="filter-pille">
               <button class="filter-btn" data-filter="beide" onclick="setzeFilter('beide')">Beide</button>
-              <button class="filter-btn" data-filter="lukas" onclick="setzeFilter('lukas')">Lukas</button>
               <button class="filter-btn" data-filter="andy" onclick="setzeFilter('andy')">Andy</button>
+              <button class="filter-btn" data-filter="lukas" onclick="setzeFilter('lukas')">Lukas</button>
             </div>
             <div class="woche-umschalter" id="woche-umschalter">
               <button class="filter-btn aktiv" data-ansichtstyp="tag" onclick="setzeAnsichtstyp('tag')">Tag</button>
@@ -1138,20 +1285,28 @@
           <button type="button" class="schliessen" onclick="statusModusUmschalten()">Fertig</button>
         </div>
 
+        <div id="druck-kopf">
+          <h1>Bergbauer Physiotherapie &ndash; Tagesplan</h1>
+          <div class="druck-datum" id="druck-kopf-datum"></div>
+        </div>
+
         <div class="tag-ansicht" id="tag-ansicht">
           <div class="zeitachse" id="zeitachse"></div>
-          <div class="spalte" id="spalte-lukas">
-            <h2>Lukas <button class="add-btn" onclick="oeffneModal('Lukas')">+</button></h2>
-            <div class="zeitraster" id="raster-lukas">
-              <div class="lane lane-normal" id="raster-lukas-normal"></div>
-              <div class="lane lane-fango" id="raster-lukas-fango"></div>
+          <!-- Andy links, Lukas rechts (seit 2026-10-27, achter Durchgang) – nur die Reihenfolge im
+               Markup wurde getauscht, IDs/Funktionen unverändert, um das Risiko für bestehende
+               Logik (Drag&Drop, Spaltenerkennung per X-Position, etc.) gering zu halten. -->
+          <div class="spalte" id="spalte-andy">
+            <h2>Andy</h2>
+            <div class="zeitraster" id="raster-andy">
+              <div class="lane lane-normal" id="raster-andy-normal" onclick="rasterKlick(event,'Andy')"></div>
+              <div class="lane lane-fango" id="raster-andy-fango"></div>
             </div>
           </div>
-          <div class="spalte" id="spalte-andy">
-            <h2>Andy <button class="add-btn" onclick="oeffneModal('Andy')">+</button></h2>
-            <div class="zeitraster" id="raster-andy">
-              <div class="lane lane-normal" id="raster-andy-normal"></div>
-              <div class="lane lane-fango" id="raster-andy-fango"></div>
+          <div class="spalte" id="spalte-lukas">
+            <h2>Lukas</h2>
+            <div class="zeitraster" id="raster-lukas">
+              <div class="lane lane-normal" id="raster-lukas-normal" onclick="rasterKlick(event,'Lukas')"></div>
+              <div class="lane lane-fango" id="raster-lukas-fango"></div>
             </div>
           </div>
         </div>
@@ -1160,21 +1315,37 @@
 
         <div class="vergleich-grid hidden" id="vergleich-grid">
           <div class="vergleich-spalte">
-            <div class="vergleich-kopf"><h3>Dieser Tag</h3></div>
+            <!-- Datum/Navigation hier bewusst entfernt (2026-10-27, neunter Durchgang): identisch
+                 zur ohnehin immer sichtbaren Datumsanzeige/-navigation im Haupt-Header (dieselbe
+                 ausgewaehltesDatum) – eine zweite, sich beim Weiterklicken ebenfalls aktualisierende
+                 Kopie direkt darunter sorgte für sichtbares Ruckeln/Jitter. Unsichtbarer Platzhalter
+                 in gleicher Höhe hält die linke und rechte Vergleichsseite weiterhin vertikal
+                 zueinander ausgerichtet (die rechte Seite behält ihren echten Kopf, da dort der
+                 einzige Weg ist, den Vergleichstag frei zu wählen). -->
+            <div class="vergleich-kopf" style="visibility:hidden;" aria-hidden="true">
+              <div class="vergleich-tag-nav">
+                <button type="button" tabindex="-1">&#8592;</button>
+                <h3>Platzhalter</h3>
+                <button type="button" tabindex="-1">&#8594;</button>
+              </div>
+            </div>
             <div class="vergleich-tag" id="vergleich-tag-links">
-              <div class="vergleich-zeitachse" id="vergleich-zeitachse-links"></div>
-              <div class="vergleich-therapeut-spalte">
-                <div class="vergleich-therapeut-kopf">Lukas <button class="add-btn-klein" title="Neuer Termin" onclick="vergleichNeuerTermin('links','Lukas')">+</button></div>
-                <div class="zeitraster vergleich-raster" id="vergleich-raster-links-lukas">
-                  <div class="lane lane-normal" id="vergleich-raster-links-lukas-normal" onclick="vergleichRasterKlick(event,'links','Lukas')"></div>
-                  <div class="lane lane-fango" id="vergleich-raster-links-lukas-fango"></div>
-                </div>
+              <div class="vergleich-zeitachse-spalte">
+                <div class="vergleich-therapeut-kopf">Platzhalter</div>
+                <div class="vergleich-zeitachse" id="vergleich-zeitachse-links"></div>
               </div>
               <div class="vergleich-therapeut-spalte">
-                <div class="vergleich-therapeut-kopf">Andy <button class="add-btn-klein" title="Neuer Termin" onclick="vergleichNeuerTermin('links','Andy')">+</button></div>
+                <div class="vergleich-therapeut-kopf">Andy</div>
                 <div class="zeitraster vergleich-raster" id="vergleich-raster-links-andy">
                   <div class="lane lane-normal" id="vergleich-raster-links-andy-normal" onclick="vergleichRasterKlick(event,'links','Andy')"></div>
                   <div class="lane lane-fango" id="vergleich-raster-links-andy-fango"></div>
+                </div>
+              </div>
+              <div class="vergleich-therapeut-spalte">
+                <div class="vergleich-therapeut-kopf">Lukas</div>
+                <div class="zeitraster vergleich-raster" id="vergleich-raster-links-lukas">
+                  <div class="lane lane-normal" id="vergleich-raster-links-lukas-normal" onclick="vergleichRasterKlick(event,'links','Lukas')"></div>
+                  <div class="lane lane-fango" id="vergleich-raster-links-lukas-fango"></div>
                 </div>
               </div>
             </div>
@@ -1193,25 +1364,28 @@
                   <button onclick="vergleichKalenderMonatWechseln(1)">&#8594;</button>
                 </div>
                 <div class="mini-kalender-wochentage">
-                  <span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span>
+                  <span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span>
                 </div>
                 <div class="mini-kalender-tage" id="vergleich-kalender-tage"></div>
               </div>
             </div>
             <div class="vergleich-tag hidden" id="vergleich-tag-rechts">
-              <div class="vergleich-zeitachse" id="vergleich-zeitachse-rechts"></div>
-              <div class="vergleich-therapeut-spalte">
-                <div class="vergleich-therapeut-kopf">Lukas <button class="add-btn-klein" title="Neuer Termin" onclick="vergleichNeuerTermin('rechts','Lukas')">+</button></div>
-                <div class="zeitraster vergleich-raster" id="vergleich-raster-rechts-lukas">
-                  <div class="lane lane-normal" id="vergleich-raster-rechts-lukas-normal" onclick="vergleichRasterKlick(event,'rechts','Lukas')"></div>
-                  <div class="lane lane-fango" id="vergleich-raster-rechts-lukas-fango"></div>
-                </div>
+              <div class="vergleich-zeitachse-spalte">
+                <div class="vergleich-therapeut-kopf">Platzhalter</div>
+                <div class="vergleich-zeitachse" id="vergleich-zeitachse-rechts"></div>
               </div>
               <div class="vergleich-therapeut-spalte">
-                <div class="vergleich-therapeut-kopf">Andy <button class="add-btn-klein" title="Neuer Termin" onclick="vergleichNeuerTermin('rechts','Andy')">+</button></div>
+                <div class="vergleich-therapeut-kopf">Andy</div>
                 <div class="zeitraster vergleich-raster" id="vergleich-raster-rechts-andy">
                   <div class="lane lane-normal" id="vergleich-raster-rechts-andy-normal" onclick="vergleichRasterKlick(event,'rechts','Andy')"></div>
                   <div class="lane lane-fango" id="vergleich-raster-rechts-andy-fango"></div>
+                </div>
+              </div>
+              <div class="vergleich-therapeut-spalte">
+                <div class="vergleich-therapeut-kopf">Lukas</div>
+                <div class="zeitraster vergleich-raster" id="vergleich-raster-rechts-lukas">
+                  <div class="lane lane-normal" id="vergleich-raster-rechts-lukas-normal" onclick="vergleichRasterKlick(event,'rechts','Lukas')"></div>
+                  <div class="lane lane-fango" id="vergleich-raster-rechts-lukas-fango"></div>
                 </div>
               </div>
             </div>
@@ -1232,7 +1406,7 @@
           <div class="sidebar-box heilmittel-box">
             <h3>Heilmittelverordnungen</h3>
             <div class="heilmittel-kopfzeile">
-              <span>Bezeichnung</span><span>Kurzform</span><span>Minuten</span><span>Farbe</span><span>Aktiv</span><span></span>
+              <span></span><span>Bezeichnung</span><span>Kurzform</span><span>Minuten</span><span>Farbe</span><span>Aktiv</span><span></span>
             </div>
             <div id="heilmittel-liste"></div>
             <button class="primary-btn" style="margin-top:4px; padding:8px; font-size:12px; width:auto; padding-left:16px; padding-right:16px;" onclick="heilmittelNeu()">+ Neues Heilmittel</button>
@@ -1353,15 +1527,6 @@
       </div>
     </main>
   </div>
-</div>
-
-<div id="druck-ansicht">
-  <h1>Bergbauer Physiotherapie – Tagesplan</h1>
-  <div class="druck-datum" id="druck-datum"></div>
-  <table>
-    <thead><tr><th>Uhrzeit</th><th>Therapeut</th><th>Raum</th><th>Patient</th><th>Behandlung</th></tr></thead>
-    <tbody id="druck-tabelle-body"></tbody>
-  </table>
 </div>
 
 <div id="modal-overlay" class="hidden">
@@ -1546,23 +1711,23 @@
     </div>
     <div class="vorschau-spalten">
       <div class="vorschau-spalte">
-        <h4 class="vorschau-spalten-titel">Lukas</h4>
-        <div id="vorschau-liste-lukas"></div>
-      </div>
-      <div class="vorschau-spalte">
         <h4 class="vorschau-spalten-titel">Andy</h4>
         <div id="vorschau-liste-andy"></div>
+      </div>
+      <div class="vorschau-spalte">
+        <h4 class="vorschau-spalten-titel">Lukas</h4>
+        <div id="vorschau-liste-lukas"></div>
       </div>
     </div>
     <div class="vorschau-zusammenfassung">
       <div class="vorschau-spalten">
         <div class="vorschau-spalte">
-          <h4>Heilmittel – Lukas</h4>
-          <div id="vorschau-heilmittel-lukas"></div>
-        </div>
-        <div class="vorschau-spalte">
           <h4>Heilmittel – Andy</h4>
           <div id="vorschau-heilmittel-andy"></div>
+        </div>
+        <div class="vorschau-spalte">
+          <h4>Heilmittel – Lukas</h4>
+          <div id="vorschau-heilmittel-lukas"></div>
         </div>
       </div>
     </div>
@@ -1574,6 +1739,8 @@
 
 <div class="tooltip" id="termin-tooltip"></div>
 <div class="zeit-indikator" id="zeit-indikator"></div>
+<div class="resize-lineal hidden" id="resize-lineal"></div>
+<div class="resize-dauer-indikator hidden" id="resize-dauer-indikator"></div>
 <div class="kurzhinweis-toast" id="kurzhinweis-toast"></div>
 <div class="farbe-popover hidden" id="farbe-popover">
   <div class="farbe-popover-label">Farbe</div>
@@ -1587,8 +1754,8 @@
   const SUPABASE_KEY = 'sb_publishable_GnYu_dMxZNdyzm1AyNbW-Q_ar0-TO1y';
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  let ausgewaehltesDatum = new Date(); // reallife "heute" als Start
-  let miniKalenderDatum = new Date();  // welcher Monat im Mini-Kalender angezeigt wird
+  let ausgewaehltesDatum = naechsterWerktag(new Date(), 1); // reallife "heute" als Start, Wochenende übersprungen
+  let miniKalenderDatum = new Date(ausgewaehltesDatum);  // welcher Monat im Mini-Kalender angezeigt wird
   let aktuelleTagesTermine = []; // zuletzt geladene Termine des angezeigten Tages (für Magnet/Konflikt-Prüfung, Druck)
   let ansichtstyp = 'tag'; // 'tag' oder 'woche'
   let heilmittelCache = []; // aus Supabase geladene Heilmittelverordnungen (Behandlungstypen)
@@ -1745,7 +1912,9 @@
   }
 
   const WOCHENTAG_LABELS = { 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 5: 'Fr', 6: 'Sa', 0: 'So' };
-  const WOCHENTAG_REIHENFOLGE = [1, 2, 3, 4, 5, 6, 0];
+  // Wochenende komplett entfernt (2026-10-27, achter Durchgang): Öffnungszeiten-Formular und die
+  // "Feste Wochentage"-Checkboxen bei wiederkehrenden Terminen zeigen nur noch Mo-Fr.
+  const WOCHENTAG_REIHENFOLGE = [1, 2, 3, 4, 5];
 
   function renderOeffnungszeitenFormular() {
     const container = document.getElementById('oeffnungszeiten-formular');
@@ -1798,7 +1967,8 @@
       return;
     }
     container.innerHTML = heilmittelCache.map(h => `
-      <div class="heilmittel-zeile" data-id="${h.id}">
+      <div class="heilmittel-zeile" data-id="${h.id}" ondragover="heilmittelDragOver(event)" ondragleave="heilmittelDragLeave(event)" ondrop="heilmittelDrop(event,'${h.id}')">
+        <span class="heilmittel-drag-griff" draggable="true" title="Ziehen, um die Reihenfolge zu ändern" ondragstart="heilmittelDragStart(event,'${h.id}')" ondragend="heilmittelDragEnd(event)">${ICON_GRIFF}</span>
         <div class="heilmittel-name-zelle">
           <input type="text" value="${(h.name || '').replace(/"/g, '&quot;')}" onchange="heilmittelFeldAktualisieren('${h.id}', 'name', this.value)">
           <label class="heilmittel-spalte-label" title="Läuft parallel zum Therapeuten in einer eigenen schmalen Spur (z.B. Fango/Massage)">
@@ -1812,6 +1982,55 @@
         <button type="button" class="heilmittel-loesch-btn" title="Löschen" onclick="heilmittelLoeschen('${h.id}')">${ICON_TRASH}</button>
       </div>
     `).join('');
+  }
+
+  // Heilmittel-Liste per Drag neu anordnen – bestimmt die Reihenfolge im Behandlungstyp-Dropdown
+  // beim Termin-Anlegen (Feld `reihenfolge`). Nutzt die native HTML5-Drag&Drop-API über den
+  // kleinen Griff-Icon links, damit Text in den Eingabefeldern weiterhin normal markierbar bleibt.
+  let heilmittelDragId = null;
+
+  function heilmittelDragStart(event, id) {
+    heilmittelDragId = id;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id); // von Firefox benötigt, damit der Drag startet
+    const zeile = event.target.closest('.heilmittel-zeile');
+    if (zeile) zeile.classList.add('dragging');
+  }
+
+  function heilmittelDragOver(event) {
+    if (!heilmittelDragId) return;
+    event.preventDefault(); // nötig, damit "drop" überhaupt feuert
+    const zeile = event.currentTarget;
+    if (zeile.dataset.id !== heilmittelDragId) zeile.classList.add('drop-vor');
+  }
+
+  function heilmittelDragLeave(event) {
+    event.currentTarget.classList.remove('drop-vor');
+  }
+
+  async function heilmittelDrop(event, zielId) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drop-vor');
+    const quelleId = heilmittelDragId;
+    heilmittelDragId = null;
+    if (!quelleId || quelleId === zielId) return;
+
+    const neueReihenfolge = heilmittelCache.map(h => h.id).filter(id => id !== quelleId);
+    const zielIndex = neueReihenfolge.indexOf(zielId);
+    neueReihenfolge.splice(zielIndex, 0, quelleId);
+
+    // Sofort optisch umsortieren (optimistisch), dann die reihenfolge-Werte in der DB speichern.
+    heilmittelCache.sort((a, b) => neueReihenfolge.indexOf(a.id) - neueReihenfolge.indexOf(b.id));
+    renderHeilmittelListe();
+    renderBehandlungstypOptionen();
+
+    await Promise.all(neueReihenfolge.map((id, index) => db.from('heilmittel').update({ reihenfolge: index }).eq('id', id)));
+    await ladeHeilmittel();
+  }
+
+  function heilmittelDragEnd() {
+    document.querySelectorAll('.heilmittel-zeile.dragging, .heilmittel-zeile.drop-vor').forEach(el => el.classList.remove('dragging', 'drop-vor'));
+    heilmittelDragId = null;
   }
 
   // Farbauswahl-Popover (normale + pastellfarbene Kacheln) statt eines langen Punkt-Rasters –
@@ -2530,8 +2749,9 @@
   let vorschauDatum = null;
 
   function oeffneVorschauModal() {
-    vorschauDatum = new Date();
-    vorschauDatum.setDate(vorschauDatum.getDate() + 1);
+    const morgen = new Date();
+    morgen.setDate(morgen.getDate() + 1);
+    vorschauDatum = naechsterWerktag(morgen, 1); // Wochenende übersprungen
     renderVorschauInhalt();
     document.getElementById('vorschau-modal-overlay').classList.remove('hidden');
   }
@@ -2542,6 +2762,7 @@
 
   function vorschauTagWechseln(delta) {
     vorschauDatum.setDate(vorschauDatum.getDate() + delta);
+    vorschauDatum = naechsterWerktag(vorschauDatum, delta >= 0 ? 1 : -1);
     renderVorschauInhalt();
   }
 
@@ -2616,18 +2837,20 @@
     const jahr = miniKalenderDatum.getFullYear();
     const monat = miniKalenderDatum.getMonth();
     const ersterTag = new Date(jahr, monat, 1);
-    // Montag = 0 ... Sonntag = 6
-    const startOffset = (ersterTag.getDay() + 6) % 7;
+    // Position des 1. im Mo-Fr-Raster (Mo=0..Fr=4) – fällt der 1. aufs Wochenende, gibt es keine
+    // Vormonats-Platzhalter (der nächste Werktag beginnt die erste Zeile neu bei Spalte 1).
+    const wochentagRoh = (ersterTag.getDay() + 6) % 7; // Mo=0..So=6
+    const startOffset = wochentagRoh <= 4 ? wochentagRoh : 0;
     const tageImMonat = new Date(jahr, monat + 1, 0).getDate();
-
-    const heute = new Date();
 
     for (let i = 0; i < startOffset; i++) {
       const vorherigerTag = new Date(jahr, monat, i - startOffset + 1);
       tageContainer.appendChild(erstelleTagButton(vorherigerTag, true));
     }
     for (let tag = 1; tag <= tageImMonat; tag++) {
-      tageContainer.appendChild(erstelleTagButton(new Date(jahr, monat, tag), false));
+      const datum = new Date(jahr, monat, tag);
+      if (istWochenende(datum)) continue; // Sa/So werden im Mini-Kalender gar nicht erst gerendert
+      tageContainer.appendChild(erstelleTagButton(datum, false));
     }
   }
 
@@ -2700,7 +2923,24 @@
     }
   }
 
+  // Während ein Termin per Dauer-Resize gezogen wird, darf der Hover-Tooltip gar nicht erst
+  // erscheinen – ein reines "danach wieder verstecken" ist nicht zuverlässig genug, weil manche
+  // Browser beim Wachsen des Blocks unter dem (unbewegten) Mauszeiger ein eigenes mouseenter
+  // auslösen, das nach dem letzten versteckeTooltip()-Aufruf feuern kann (siehe starteResize).
+  let resizeAktiv = false;
+  // Kurzzeitige Sperre direkt nach einem echten Verschiebe-Drag in der Vergleichsansicht (seit
+  // 2026-10-27, zehnter Durchgang) – siehe vergleichStarteDrag/vergleichRasterKlick unten.
+  let vergleichDragGeradeAbgeschlossen = false;
+  // Analog zu resizeAktiv oben, aber für das Verschieben eines Termins in der Vergleichsansicht
+  // (seit 2026-10-27, zehnter Durchgang, als der Block dort begann, der Maus sichtbar zu
+  // folgen statt optisch stillzustehen): dasselbe "mouseenter feuert während des Ziehens
+  // trotzdem noch" -Problem tritt jetzt auch hier auf, sobald der Block unter den Mauszeiger
+  // wandert. Ein reines wiederholtes versteckeTooltip() bei jeder Mausbewegung reicht
+  // nachweislich nicht (siehe Kommentar oben) – blockt zeigeTooltip() daher ebenso direkt an
+  // der Quelle für die gesamte Dauer des Zugs.
+  let vergleichVerschiebenAktiv = false;
   function zeigeTooltip(event, t) {
+    if (resizeAktiv || vergleichVerschiebenAktiv) return;
     const tip = document.getElementById('termin-tooltip');
     const start = t.startzeit.slice(0, 5);
     const ende = addMinuten(start, t.dauer_minuten);
@@ -2759,6 +2999,21 @@
 
   function formatierterTitel(d) {
     return d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  // ---- Wochenende komplett entfernt (2026-10-27, achter Durchgang): die Praxis hat samstags und
+  // sonntags nie geöffnet, daher springt jede Tages-Navigation (Pfeile, "Heute", Vorschau-Default,
+  // Vergleichstag-Pfeile) automatisch über Sa/So hinweg – diese Tage lassen sich nirgends mehr
+  // auswählen. ----
+  function istWochenende(d) {
+    const tag = d.getDay(); // 0 = So, 6 = Sa
+    return tag === 0 || tag === 6;
+  }
+  // Springt (falls nötig) auf den nächsten Werktag in Richtung `richtung` (+1 vorwärts, -1 rückwärts).
+  function naechsterWerktag(d, richtung) {
+    const ergebnis = new Date(d);
+    while (istWochenende(ergebnis)) ergebnis.setDate(ergebnis.getDate() + richtung);
+    return ergebnis;
   }
 
   // ---- Auth ----
@@ -2824,6 +3079,7 @@
   function aenderDatum(deltaTage) {
     const schritt = ansichtstyp === 'woche' ? deltaTage * 7 : deltaTage;
     ausgewaehltesDatum.setDate(ausgewaehltesDatum.getDate() + schritt);
+    ausgewaehltesDatum = naechsterWerktag(ausgewaehltesDatum, deltaTage >= 0 ? 1 : -1);
     miniKalenderDatum = new Date(ausgewaehltesDatum);
     aktualisiereAnsicht();
   }
@@ -2831,9 +3087,11 @@
   function setzeAnsichtstyp(typ) {
     ansichtstyp = typ;
     if (typ === 'vergleich' && !vergleichsDatum) {
-      // Vorbelegung: Tag danach, damit die Vergleichsansicht beim ersten Öffnen nicht leer ist
-      vergleichsDatum = new Date(ausgewaehltesDatum);
-      vergleichsDatum.setDate(vergleichsDatum.getDate() + 1);
+      // Vorbelegung: Tag danach (Wochenende übersprungen), damit die Vergleichsansicht beim
+      // ersten Öffnen nicht leer ist
+      const danach = new Date(ausgewaehltesDatum);
+      danach.setDate(danach.getDate() + 1);
+      vergleichsDatum = naechsterWerktag(danach, 1);
     }
     document.querySelectorAll('#woche-umschalter .filter-btn').forEach(btn => {
       btn.classList.toggle('aktiv', btn.dataset.ansichtstyp === typ);
@@ -2841,12 +3099,15 @@
     document.getElementById('tag-ansicht').classList.toggle('hidden', typ !== 'tag');
     document.getElementById('woche-grid').classList.toggle('hidden', typ !== 'woche');
     document.getElementById('vergleich-grid').classList.toggle('hidden', typ !== 'vergleich');
+    document.getElementById('app').classList.toggle('vergleich-breit', typ === 'vergleich');
     aktualisiereAnsicht();
   }
 
   function gehZuHeute() {
-    ausgewaehltesDatum = new Date();
-    miniKalenderDatum = new Date();
+    // Fällt der heutige Tag auf ein Wochenende, zum nächsten Werktag (Montag) springen –
+    // Wochenenden sind in der App nirgends mehr auswählbar.
+    ausgewaehltesDatum = naechsterWerktag(new Date(), 1);
+    miniKalenderDatum = new Date(ausgewaehltesDatum);
     aktualisiereAnsicht();
   }
 
@@ -2857,6 +3118,7 @@
   const ICON_STIFT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>';
   const ICON_WARNUNG = '<svg class="icon-mini" style="color:#D97706;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
   const ICON_HAUS = '<svg class="icon-mini icon-haus" title="Hausbesuch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7"/><path d="M9 22V12h6v10"/><path d="M5 10v10a1 1 0 0 0 1 1h3m10-11v10a1 1 0 0 1-1 1h-3"/></svg>';
+  const ICON_GRIFF = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
   function terminBlockIcons(t) {
     const serieIcon = t.serie_id
       ? '<svg class="icon-mini icon-serie" title="Teil einer Serie" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>'
@@ -2908,6 +3170,57 @@
       ${hauptzeile}
       ${resizeGriff}${loeschGriff}
     ` };
+  }
+
+  // Verkleinert bei Bedarf die Schrift der Haupt-Zeile (Zeit/Kürzel/Name) einzelner Termin-
+  // Blöcke, damit diese drei Angaben IMMER vollständig sichtbar sind, OHNE optisch über den
+  // eigenen Zeitslot hinauszuwachsen (Lukas' Wunsch: "sobald es größer ist als das Terminfeld,
+  // muss die Schrift kleiner werden") – vorher wurde nur gegen den Abstand zum nächsten Termin
+  // geprüft, wodurch kurze Termine mit viel Platz danach trotzdem unschön umbrachen/Wörter
+  // mitten im Wort trennten, statt einfach kleiner zu werden. Ablauf je Lane: erst alle Blöcke
+  // auf die Standardschrift zurücksetzen, dann für jeden Block den verfügbaren Platz ermitteln
+  // (die EIGENE Blockhöhe, zusätzlich gedeckelt durch den Abstand zum nächsten Termin derselben
+  // Lane als zweite Sicherheitsgrenze) und die Schrift stufenweise verkleinern, bis der Inhalt
+  // hineinpasst oder die Mindestgröße erreicht ist.
+  const SCHRUMPF_SCHRITTE = [14.5, 13.5, 12.5, 11.5, 10.5, 9.5];
+  function blockInhaltHoehe(block) {
+    const blockRect = block.getBoundingClientRect();
+    let unten = blockRect.top;
+    Array.from(block.children).forEach(el => {
+      if (el.classList.contains('resize-griff') || el.classList.contains('block-loesch-btn')) return;
+      const r = el.getBoundingClientRect();
+      if (r.bottom > unten) unten = r.bottom;
+    });
+    const paddingUnten = parseFloat(getComputedStyle(block).paddingBottom) || 0;
+    return (unten - blockRect.top) + paddingUnten;
+  }
+  function schrumpfeBlockSchriftInLane(laneEl) {
+    if (!laneEl) return;
+    const bloecke = Array.from(laneEl.children)
+      .filter(el => el.classList && el.classList.contains('termin-block'))
+      .map(el => ({ el, top: parseFloat(el.style.top) || 0, hoehe: parseFloat(el.style.height) || 0 }))
+      .sort((a, b) => a.top - b.top);
+    if (!bloecke.length) return;
+    bloecke.forEach(b => { b.el.style.removeProperty('--block-schrift'); b.el.classList.remove('einzeiler'); });
+    const laneHoehe = laneEl.scrollHeight || laneEl.clientHeight || 0;
+    bloecke.forEach((eintrag, i) => {
+      const naechsterTop = (i + 1 < bloecke.length) ? bloecke[i + 1].top : laneHoehe;
+      const lueckeZumNaechsten = naechsterTop - eintrag.top - 2; // 2px Sicherheitsabstand
+      // Maßgeblich ist primär die EIGENE Blockhöhe (der Zeitslot des Termins selbst) – zusätzlich
+      // nie größer als die Lücke zum nächsten Termin, damit ein Hineinlaufen in den Nachbarn
+      // weiterhin ausgeschlossen bleibt (beide Grenzen gelten gleichzeitig).
+      const verfuegbar = Math.min(eintrag.hoehe, lueckeZumNaechsten);
+      let passt = false;
+      for (const schrift of SCHRUMPF_SCHRITTE) {
+        eintrag.el.style.setProperty('--block-schrift', schrift + 'px');
+        if (blockInhaltHoehe(eintrag.el) <= verfuegbar) { passt = true; break; }
+      }
+      // Extremfall (sehr kurzer Termin direkt vor dem nächsten + sehr langer Name): selbst die
+      // Mindestschrift reicht nicht aus. Letzter Ausweg, um ein Hineinlaufen in den nächsten
+      // Termin trotzdem zu verhindern: Kürzel/Name einzeilig mit "…" abschneiden (Details bleiben
+      // über Hover/Klick weiterhin vollständig abrufbar).
+      if (!passt) eintrag.el.classList.add('einzeiler');
+    });
   }
 
   async function ladeTermine() {
@@ -2974,6 +3287,10 @@
     // meisten Tagen bleibt sie leer, dann bekommt die normale Lane die volle Spaltenbreite.
     lanes.Lukas.fango.classList.toggle('leer', lanes.Lukas.fango.children.length === 0);
     lanes.Andy.fango.classList.toggle('leer', lanes.Andy.fango.children.length === 0);
+    schrumpfeBlockSchriftInLane(lanes.Lukas.normal);
+    schrumpfeBlockSchriftInLane(lanes.Lukas.fango);
+    schrumpfeBlockSchriftInLane(lanes.Andy.normal);
+    schrumpfeBlockSchriftInLane(lanes.Andy.fango);
   }
 
   // ---- Status-Mehrfachauswahl-Modus: Termine im Kalender anklicken (Mehrfachauswahl) statt den
@@ -3086,9 +3403,11 @@
 
     const terminEigeneSpalte = terminNutztEigeneSpalte(quelle.behandlungstyp);
     const eigeneFahrzeit = quelle.ist_hausbesuch ? (quelle.fahrzeit_minuten || 0) : 0;
+    // Konfliktprüfung läuft seit 2026-10-27 (achter Durchgang) rein über den Therapeuten (+ Lane) –
+    // Lukas und Andy sind jeweils eigene, unabhängige Spalten und dürfen sich zeitgleich Termine
+    // legen, auch wenn zufällig dieselbe Raumnummer gewählt ist (siehe Spec/Code-Map).
     const belegung = (aktuelleTagesTermine || []).filter(t => (
-      (quelle.raum && t.raum === quelle.raum) ||
-      (t.therapeut === therapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte)
+      t.therapeut === therapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte
     ));
     if (findeKonflikt(belegung, startzeit, quelle.dauer_minuten, eigeneFahrzeit)) {
       const frei = naechsteFreieZeit(belegung, quelle.dauer_minuten, startzeit, oz, eigeneFahrzeit);
@@ -3136,11 +3455,12 @@
     const oz = aktuelleOeffnungszeit();
     const topPx = (minutenAbsolut - zeitToMinuten(oz.start)) * PX_PRO_MINUTE;
 
-    // Zeitleiste soll immer li. der jeweils gezogenen Spalte stehen: bei Lukas an der
-    // normalen Zeitachse, bei Andy direkt li. von Andys Spalte (im Zwischenraum).
+    // Zeitleiste soll immer li. der jeweils gezogenen Spalte stehen: bei Andy (links, seit
+    // 2026-10-27 achter Durchgang) an der normalen Zeitachse, bei Lukas (rechts) direkt
+    // li. von Lukas' Spalte (im Zwischenraum zu Andy).
     let ankerRect;
-    if (zielTherapeut === 'Andy') {
-      ankerRect = document.getElementById('raster-andy').getBoundingClientRect();
+    if (zielTherapeut === 'Lukas') {
+      ankerRect = document.getElementById('raster-lukas').getBoundingClientRect();
       indikator.style.right = (window.innerWidth - ankerRect.left + 6) + 'px';
     } else {
       ankerRect = document.getElementById('zeitachse').getBoundingClientRect();
@@ -3213,14 +3533,14 @@
       const minutenAbsolut = gerundeteMinuten(top, termin, oz);
       let neueStartzeit = zuZeitString(minutenAbsolut);
 
-      // Magnetfunktion: bei Raum- ODER Therapeuten-Konflikt (inkl. Spaltenwechsel) automatisch
-      // zur nächsten freien Zeit springen, die für beide Ressourcen frei ist. Hausbesuche haben
-      // keinen Raum (raum = null) – dann wird nur der Therapeut (inkl. Fahrzeit) geprüft.
+      // Magnetfunktion: bei Therapeuten-Konflikt (inkl. Spaltenwechsel) automatisch zur nächsten
+      // freien Zeit springen. Hausbesuche haben keinen Raum (raum = null) – die Fahrzeit zählt
+      // beim Therapeuten mit. Seit 2026-10-27 (achter Durchgang) rein therapeutenbezogen (+ Lane) –
+      // kein Raum-Konflikt mehr über Therapeuten hinweg (Lukas/Andy sind unabhängige Spalten).
       const eigeneFahrzeit = termin.ist_hausbesuch ? (termin.fahrzeit_minuten || 0) : 0;
       const terminEigeneSpalte = terminNutztEigeneSpalte(termin.behandlungstyp);
       const belegung = aktuelleTagesTermine.filter(t => t.id !== termin.id && (
-        (termin.raum && t.raum === termin.raum) ||
-        (t.therapeut === neuerTherapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte)
+        t.therapeut === neuerTherapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte
       ));
       if (findeKonflikt(belegung, neueStartzeit, termin.dauer_minuten, eigeneFahrzeit)) {
         const frei = naechsteFreieZeit(belegung, termin.dauer_minuten, neueStartzeit, oz, eigeneFahrzeit);
@@ -3251,6 +3571,44 @@
   }
 
   // ---- Drag-Resize: Dauer eines Termins per Ziehen am unteren Blockrand verändern ----
+  // Lineal mit 5-Minuten-Strichen (alle 15 Min etwas länger) rechts neben dem Block, damit beim
+  // Ziehen sichtbar ist, in welchen Schritten sich die Dauer ändert.
+  // pxProMinute optional (Default: Tagesansicht-Skala) – die Vergleichsansicht übergibt seit
+  // 2026-10-27 (neunter Durchgang) ihre eigene, kleinere VERGLEICH_PX_PRO_MINUTE, damit dasselbe
+  // Lineal/derselbe Dauer-Indikator unverändert auch dort funktioniert.
+  function baueResizeLineal(block, pxProMinute = PX_PRO_MINUTE) {
+    const lineal = document.getElementById('resize-lineal');
+    lineal.innerHTML = '';
+    const rect = block.getBoundingClientRect();
+    const maxHoehePx = block.parentElement.clientHeight - parseFloat(block.style.top);
+    const maxMinuten = Math.max(5, Math.floor(maxHoehePx / pxProMinute / 5) * 5);
+    lineal.style.left = (rect.right + 6) + 'px';
+    lineal.style.top = rect.top + 'px';
+    lineal.style.height = (maxMinuten * pxProMinute) + 'px';
+    for (let m = 5; m <= maxMinuten; m += 5) {
+      const tick = document.createElement('div');
+      tick.className = 'tick' + (m % 15 === 0 ? ' gross' : '');
+      tick.style.top = (m * pxProMinute) + 'px';
+      lineal.appendChild(tick);
+    }
+    lineal.classList.remove('hidden');
+  }
+
+  function zeigeResizeDauerIndikator(block, dauer, termin, pxProMinute = PX_PRO_MINUTE) {
+    const indikator = document.getElementById('resize-dauer-indikator');
+    const rect = block.getBoundingClientRect();
+    const startMin = zeitToMinuten(termin.startzeit.slice(0, 5));
+    indikator.textContent = dauer + ' Min (bis ' + zuZeitString(startMin + dauer) + ')';
+    indikator.style.left = (rect.right + 20) + 'px';
+    indikator.style.top = (rect.top + dauer * pxProMinute) + 'px';
+    indikator.classList.remove('hidden');
+  }
+
+  function versteckeResizeLineal() {
+    document.getElementById('resize-lineal').classList.add('hidden');
+    document.getElementById('resize-dauer-indikator').classList.add('hidden');
+  }
+
   function starteResize(event, termin, block) {
     if (event.button !== 0) return;
     if (statusModusAktiv) { event.preventDefault(); event.stopPropagation(); toggleStatusAuswahl(termin, block); return; }
@@ -3264,7 +3622,12 @@
     function aufBewegen(ev) {
       const deltaY = ev.clientY - startMausY;
       if (!hatSichBewegt && Math.abs(deltaY) < 4) return;
-      if (!hatSichBewegt) { hatSichBewegt = true; block.classList.add('resizing'); }
+      if (!hatSichBewegt) { hatSichBewegt = true; resizeAktiv = true; block.classList.add('resizing'); baueResizeLineal(block); }
+      // Während des Ziehens kann der wachsende Block unter dem Mauszeiger ein erneutes
+      // mouseenter auslösen und den Hover-Tooltip wieder einblenden – der würde dann genau
+      // über dem neuen 5-Minuten-Lineal liegen. resizeAktiv blockt zeigeTooltip() direkt an der
+      // Quelle; das erneute Verstecken hier ist ein zusätzliches Sicherheitsnetz.
+      versteckeTooltip();
       let neueHoeheRoh = Math.max(20, startHoehe + deltaY);
       const maxHoehe = block.parentElement.clientHeight - parseFloat(block.style.top);
       neueHoeheRoh = Math.min(neueHoeheRoh, maxHoehe);
@@ -3273,11 +3636,14 @@
       const roheDauer = neueHoeheRoh / PX_PRO_MINUTE;
       const gerasteteDauer = Math.max(5, Math.round(roheDauer / 5) * 5);
       block.style.height = (gerasteteDauer * PX_PRO_MINUTE) + 'px';
+      zeigeResizeDauerIndikator(block, gerasteteDauer, termin);
     }
 
     function aufLoslassen() {
       document.removeEventListener('mousemove', aufBewegen);
       document.removeEventListener('mouseup', aufLoslassen);
+      versteckeResizeLineal();
+      resizeAktiv = false;
 
       if (!hatSichBewegt) {
         // war nur ein Klick auf den Griff, kein Ziehen -> genau wie ein normaler Klick das
@@ -3303,9 +3669,9 @@
     const oz = aktuelleOeffnungszeit();
     const eigeneFahrzeit = termin.ist_hausbesuch ? (termin.fahrzeit_minuten || 0) : 0;
     const terminEigeneSpalte = terminNutztEigeneSpalte(termin.behandlungstyp);
+    // Rein therapeutenbezogen (+ Lane), siehe Hinweis bei starteDrag/aufLoslassen oben.
     const belegung = aktuelleTagesTermine.filter(t => t.id !== termin.id && (
-      (termin.raum && t.raum === termin.raum) ||
-      (t.therapeut === termin.therapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte)
+      t.therapeut === termin.therapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte
     ));
     // Bei Konflikt mit der gewünschten neuen Dauer: auf die maximal mögliche Dauer begrenzen,
     // bis zum nächsten belegten Fenster bzw. bis zum Ende der Öffnungszeit.
@@ -3322,6 +3688,20 @@
     if (error) { alert('Fehler beim Ändern der Dauer: ' + error.message); ladeTermine(); return; }
     protokolliere(termin.id, 'bearbeitet', `${termin.patientenname}: Dauer ${termin.dauer_minuten} → ${neueDauer} Min`, termin.datum);
     ladeTermine();
+  }
+
+  // Klick auf eine freie Stelle im normalen Zeitraster (nicht auf einen Termin-Block) öffnet das
+  // Anlegen-Modal mit der angeklickten Uhrzeit vorausgefüllt – ersetzt den alten "+"-Button,
+  // analog zum bereits bestehenden Verhalten in der Vergleichsansicht (vergleichRasterKlick).
+  function rasterKlick(e, therapeut) {
+    if (e.target !== e.currentTarget) return; // Klick ging auf einen Termin-Block, nicht auf freie Fläche
+    const rect = e.currentTarget.getBoundingClientRect();
+    const oz = aktuelleOeffnungszeit();
+    let minutenAbsolut = zeitToMinuten(oz.start) + (e.clientY - rect.top) / PX_PRO_MINUTE;
+    minutenAbsolut = Math.max(zeitToMinuten(oz.start), Math.min(Math.round(minutenAbsolut / 5) * 5, zeitToMinuten(oz.ende) - 5));
+    const zeitStr = String(Math.floor(minutenAbsolut / 60)).padStart(2, '0') + ':' + String(minutenAbsolut % 60).padStart(2, '0');
+    oeffneModal(therapeut);
+    document.getElementById('modal-startzeit').value = zeitStr;
   }
 
   // ---- Neuer Termin / Bearbeiten ----
@@ -3459,28 +3839,20 @@
       return;
     }
 
-    // Raum- UND Therapeuten-Konflikt prüfen (beide dürfen nicht doppelt belegt sein;
-    // Magnetfunktion: bei Konflikt nächste freie Zeit vorschlagen, die für BEIDE frei ist).
-    // Hausbesuche haben keinen Praxisraum (raum = null) – dafür zählt die Fahrzeit beim Therapeuten mit.
+    // Therapeuten-Konflikt prüfen (ein Therapeut darf nicht doppelt belegt sein; Magnetfunktion:
+    // bei Konflikt nächste freie Zeit vorschlagen). Hausbesuche haben keinen Praxisraum
+    // (raum = null) – dafür zählt die Fahrzeit beim Therapeuten mit. Seit 2026-10-27 (achter
+    // Durchgang) bewusst OHNE Raum-Konflikt über Therapeuten hinweg: Lukas und Andy sind
+    // unabhängige Spalten und dürfen zeitgleich Termine haben, auch bei gleicher Raumnummer.
     const oz = aktuelleOeffnungszeit();
     // Heilmittel mit "eigene Spalte" (z.B. Fango/Massage) laufen parallel zum Therapeuten in einer
     // eigenen Lane – Therapeuten-Konflikt wird deshalb nur INNERHALB derselben Lane geprüft.
     const terminEigeneSpalte = terminNutztEigeneSpalte(behandlungstyp);
-    const raumBelegung = raum ? aktuelleTagesTermine.filter(t => t.raum === raum && t.id !== id) : [];
     const therapeutBelegung = aktuelleTagesTermine.filter(t => t.therapeut === therapeut && t.id !== id && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte);
-    const raumKonflikt = raum ? findeKonflikt(raumBelegung, startzeit, dauer_minuten, eigeneFahrzeit) : null;
     const therapeutKonflikt = findeKonflikt(therapeutBelegung, startzeit, dauer_minuten, eigeneFahrzeit);
-    if (raumKonflikt || therapeutKonflikt) {
-      const kombinierteBelegung = aktuelleTagesTermine.filter(t => t.id !== id && ((raum && t.raum === raum) || (t.therapeut === therapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte)));
-      const frei = naechsteFreieZeit(kombinierteBelegung, dauer_minuten, startzeit, oz, eigeneFahrzeit);
-      let meldung;
-      if (raumKonflikt && therapeutKonflikt) {
-        meldung = `Raum ${raum} ist um ${startzeit} bei ${raumKonflikt.patientenname} belegt, und ${therapeut} ist zu der Zeit schon bei ${therapeutKonflikt.patientenname} eingeplant.`;
-      } else if (raumKonflikt) {
-        meldung = `Raum ${raum} ist um ${startzeit} bei ${raumKonflikt.patientenname} belegt.`;
-      } else {
-        meldung = `${therapeut} ist um ${startzeit} schon bei ${therapeutKonflikt.patientenname} eingeplant${istHausbesuch ? ' (inkl. Fahrzeit)' : ''}.`;
-      }
+    if (therapeutKonflikt) {
+      const frei = naechsteFreieZeit(therapeutBelegung, dauer_minuten, startzeit, oz, eigeneFahrzeit);
+      const meldung = `${therapeut} ist um ${startzeit} schon bei ${therapeutKonflikt.patientenname} eingeplant${istHausbesuch ? ' (inkl. Fahrzeit)' : ''}.`;
       if (frei) {
         document.getElementById('modal-startzeit').value = frei;
         konfliktEl.textContent = `${meldung} Uhrzeit automatisch auf ${frei} angepasst – bitte prüfen und erneut auf Speichern klicken.`;
@@ -3511,7 +3883,7 @@
         const ozTag = oeffnungszeitenProTag[datumObj.getDay()] || oz;
         let zeitFuerTag = startzeit;
         const tagesBelegung = await holeTagesBelegung(datumStr, null);
-        const kombiniertTag = tagesBelegung.filter(t => (raum && t.raum === raum) || (t.therapeut === therapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte));
+        const kombiniertTag = tagesBelegung.filter(t => terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte && t.therapeut === therapeut);
         if (findeKonflikt(kombiniertTag, zeitFuerTag, dauer_minuten, eigeneFahrzeit)) {
           const freiTag = naechsteFreieZeit(kombiniertTag, dauer_minuten, zeitFuerTag, ozTag, eigeneFahrzeit);
           if (freiTag) { zeitFuerTag = freiTag; verschoben++; }
@@ -3652,19 +4024,21 @@
 
   // ---- Wochenansicht ----
   async function renderWoche() {
+    // Wochenende komplett entfernt: nur noch Mo-Fr (5 Tage statt 7), siehe istWochenende/naechsterWerktag.
     const montag = montagDerWoche(ausgewaehltesDatum);
     const tage = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 5; i++) {
       const d = new Date(montag);
       d.setDate(d.getDate() + i);
       tage.push(d);
     }
     const vonDatum = isoDatum(tage[0]);
-    const bisDatum = isoDatum(tage[6]);
+    const bisDatum = isoDatum(tage[tage.length - 1]);
 
     const { data, error } = await db.from('termine').select('*').gte('datum', vonDatum).lte('datum', bisDatum);
     const grid = document.getElementById('woche-grid');
     grid.innerHTML = '';
+    grid.classList.remove('akkordeon-aktiv');
 
     if (error) {
       grid.innerHTML = `<div style="padding:8px;color:#DC2626;font-size:12px;">Fehler beim Laden: ${error.message}</div>`;
@@ -3685,35 +4059,94 @@
         })
         .sort((a, b) => a.startzeit.localeCompare(b.startzeit));
 
-      const karte = document.createElement('div');
-      karte.className = 'woche-tag-karte' + (istGleicherTag(tag, heute) ? ' heute' : '');
+      const spalte = document.createElement('div');
+      spalte.className = 'woche-tag-spalte' + (istGleicherTag(tag, heute) ? ' heute' : '');
+
+      // Klick auf die Spalte pinnt sie als "groß" (wie Hover) – wichtig für Touch-Geräte, die
+      // kein echtes :hover kennen. Klicks auf einen Termin selbst sollen das nicht auslösen.
+      spalte.addEventListener('click', (e) => {
+        if (e.target.closest('.woche-termin')) return;
+        const warSchonAktiv = spalte.classList.contains('aktiv');
+        grid.querySelectorAll('.woche-tag-spalte.aktiv').forEach(el => el.classList.remove('aktiv'));
+        if (warSchonAktiv) {
+          grid.classList.remove('akkordeon-aktiv');
+        } else {
+          spalte.classList.add('aktiv');
+          grid.classList.add('akkordeon-aktiv');
+        }
+      });
+
+      // -- Minimierte Ansicht: Wochentag + Datum + Terminanzahl --
+      const mini = document.createElement('div');
+      mini.className = 'woche-tag-mini';
+      mini.innerHTML = `
+        <div class="mini-wochentag">${WOCHENTAG_KURZ[tag.getDay()]}</div>
+        <div class="mini-datum">${tag.getDate()}.${tag.getMonth() + 1}.</div>
+        ${terminDesTages.length ? `<div class="mini-anzahl">${terminDesTages.length}</div>` : ''}
+      `;
+      spalte.appendChild(mini);
+
+      // -- Volle Ansicht: Kopf + komplette Terminliste des Tages --
+      const voll = document.createElement('div');
+      voll.className = 'woche-tag-voll';
       const kopf = document.createElement('div');
       kopf.className = 'woche-tag-kopf';
       kopf.innerHTML = `<span>${WOCHENTAG_KURZ[tag.getDay()]}</span><span class="tag-zahl">${tag.getDate()}.${tag.getMonth() + 1}.</span>`;
-      karte.appendChild(kopf);
+      voll.appendChild(kopf);
 
       if (!terminDesTages.length) {
         const leer = document.createElement('div');
         leer.className = 'woche-leer';
         leer.textContent = 'Keine Termine';
-        karte.appendChild(leer);
-      } else {
-        terminDesTages.forEach(t => {
-          const zeile = document.createElement('div');
-          zeile.className = 'woche-termin ' + (t.therapeut === 'Lukas' ? 'lukas' : 'andy');
-          zeile.innerHTML = `<span class="zeit">${t.startzeit.slice(0, 5)}</span><span class="wer">${t.patientenname}</span>`;
-          zeile.title = `${t.therapeut} · ${t.ist_hausbesuch ? 'Hausbesuch' : 'Raum ' + t.raum} · ${t.behandlungstyp}`;
-          zeile.onclick = () => {
-            ausgewaehltesDatum = new Date(tag);
-            miniKalenderDatum = new Date(tag);
-            setzeAnsichtstyp('tag');
-            setTimeout(() => oeffneBearbeitenModal(t), 60);
-          };
-          karte.appendChild(zeile);
+        voll.appendChild(leer);
+      } else if (ansichtsFilter === 'beide') {
+        // Seit 2026-10-27 (neunter Durchgang): pro Tag in zwei Spalten aufgeteilt (Andy links,
+        // Lukas rechts, wie überall sonst in der App), statt einer gemischten chronologischen
+        // Liste – nur sinnvoll, wenn der Filter wirklich beide Therapeuten zeigt.
+        const split = document.createElement('div');
+        split.className = 'woche-tag-spalten-split';
+        [['Andy', terminDesTages.filter(t => t.therapeut === 'Andy')], ['Lukas', terminDesTages.filter(t => t.therapeut === 'Lukas')]].forEach(([name, liste]) => {
+          const therapeutSpalte = document.createElement('div');
+          therapeutSpalte.className = 'woche-tag-therapeut-spalte';
+          const label = document.createElement('div');
+          label.className = 'woche-tag-therapeut-label';
+          label.textContent = name;
+          therapeutSpalte.appendChild(label);
+          if (!liste.length) {
+            const leer = document.createElement('div');
+            leer.className = 'woche-leer';
+            leer.textContent = 'Keine Termine';
+            therapeutSpalte.appendChild(leer);
+          } else {
+            liste.forEach(t => therapeutSpalte.appendChild(baueWocheTerminZeile(t, tag)));
+          }
+          split.appendChild(therapeutSpalte);
         });
+        voll.appendChild(split);
+      } else {
+        terminDesTages.forEach(t => voll.appendChild(baueWocheTerminZeile(t, tag)));
       }
-      grid.appendChild(karte);
+      spalte.appendChild(voll);
+
+      grid.appendChild(spalte);
     });
+  }
+
+  // Baut eine einzelne Termin-Zeile für die Wochenansicht (Zeit + Name, Rest nur im nativen
+  // Hover-Titel) – gemeinsam genutzt von der aufgeteilten Andy/Lukas-Ansicht und der einfachen
+  // Liste bei aktivem Einzel-Filter.
+  function baueWocheTerminZeile(t, tag) {
+    const zeile = document.createElement('div');
+    zeile.className = 'woche-termin';
+    zeile.innerHTML = `<span class="zeit">${t.startzeit.slice(0, 5)}</span><span class="wer">${t.patientenname}</span>`;
+    zeile.title = `${t.therapeut} · ${t.ist_hausbesuch ? 'Hausbesuch' : 'Raum ' + t.raum} · ${t.behandlungstyp}`;
+    zeile.onclick = () => {
+      ausgewaehltesDatum = new Date(tag);
+      miniKalenderDatum = new Date(tag);
+      setzeAnsichtstyp('tag');
+      setTimeout(() => oeffneBearbeitenModal(t), 60);
+    };
+    return zeile;
   }
 
   // ---- Vergleichsansicht: zwei Tage nebeneinander (links = normal navigierter Tag, fix;
@@ -3802,7 +4235,9 @@
       const hoehe = Math.max(t.dauer_minuten * VERGLEICH_PX_PRO_MINUTE, 20);
       block.style.top = top + 'px';
       block.style.height = hoehe + 'px';
-      const { html, kompakt } = terminBlockInnerHtml(t, hoehe, false);
+      // mitResizeGriff jetzt true (seit 2026-10-27, neunter Durchgang): volle Dauer-Resize-
+      // Funktionalität wie in der Tagesansicht, siehe vergleichStarteResize unten.
+      const { html, kompakt } = terminBlockInnerHtml(t, hoehe, true);
       if (kompakt) block.classList.add('kompakt');
       block.innerHTML = html;
       block.addEventListener('mousedown', (e) => vergleichStarteDrag(e, t, block, seite));
@@ -3816,53 +4251,108 @@
           if (await terminWirklichLoeschen(t)) renderVergleich();
         });
       }
+      const griffEl = block.querySelector('.resize-griff');
+      if (griffEl) griffEl.addEventListener('mousedown', (e) => vergleichStarteResize(e, t, block, seite));
       const lane = terminNutztEigeneSpalte(t.behandlungstyp) ? 'fango' : 'normal';
       lanes[t.therapeut === 'Lukas' ? 'Lukas' : 'Andy'][lane].appendChild(block);
     });
 
     Object.values(lanes).forEach(l => l.fango.classList.toggle('leer', l.fango.children.length === 0));
+    Object.values(lanes).forEach(l => { schrumpfeBlockSchriftInLane(l.normal); schrumpfeBlockSchriftInLane(l.fango); });
   }
 
-  // Termin in der Vergleichsansicht per Ziehen auf den ANDEREN Tag verschieben (Datum, Zeit und
-  // ggf. Therapeut werden anhand der Ziel-Lane neu bestimmt). Ziehen innerhalb desselben Tages
-  // tut nichts (dafür ist die normale Tagesansicht da) – ein einfacher Klick ohne Ziehen öffnet
-  // weiterhin das Bearbeiten-Modal.
+  // Termin in der Vergleichsansicht per Ziehen verschieben – sowohl auf den ANDEREN Tag (Datum,
+  // Zeit und ggf. Therapeut werden anhand der Ziel-Lane neu bestimmt) als auch frei INNERHALB
+  // derselben Tagesseite (Therapeutenwechsel z.B. Andy -> Lukas und/oder neue Uhrzeit, genau wie
+  // in der normalen Tagesansicht). Ein einfacher Klick ohne Ziehen öffnet weiterhin das
+  // Bearbeiten-Modal.
   function vergleichStarteDrag(event, termin, block, seite) {
     if (event.button !== 0) return;
     if (statusModusAktiv) return;
     event.preventDefault();
     const startMausX = event.clientX, startMausY = event.clientY;
+    const startTop = parseFloat(block.style.top);
     let hatSichBewegt = false;
     let zielLane = null;
     versteckeTooltip();
 
     function aufBewegen(ev) {
       if (!hatSichBewegt && Math.hypot(ev.clientX - startMausX, ev.clientY - startMausY) < 5) return;
-      if (!hatSichBewegt) { hatSichBewegt = true; block.classList.add('vergleich-dragging'); }
-      if (zielLane) zielLane.classList.remove('drop-ziel');
+      if (!hatSichBewegt) { hatSichBewegt = true; block.classList.add('vergleich-dragging'); vergleichVerschiebenAktiv = true; }
+      // Der Block folgt der Maus vertikal 1:1 innerhalb seiner Ursprungs-Lane (seit 2026-10-27,
+      // zehnter Durchgang) – genau dasselbe Prinzip wie starteDrag() in der Tagesansicht (dort
+      // bleibt der Block beim Spaltenwechsel ja ebenfalls in seiner Ursprungsspalte, nur die
+      // Uhrzeit/Höhe bewegt sich sichtbar mit). Vorher stand der Block während des gesamten Zugs
+      // optisch unverändert an seiner Startposition (nur Opacity 0.4) – von Lukas gemeldet als
+      // "der Textblock wird nicht mitgenommen", was dazu führte, dass ein zweiter, eigentlich
+      // unnötiger Klick auf das Ziel-Raster folgte und dort fälschlich ein neues Anlegen-Modal
+      // öffnete. Der schwebende Zeit-Indikator unten zeigt weiterhin das tatsächliche Ziel
+      // (inkl. Spalten-/Tageswechsel), diese Bewegung ist nur das zusätzliche "es tut sich
+      // wirklich etwas"-Feedback direkt am Block.
+      const deltaY = ev.clientY - startMausY;
+      const maxTop = block.parentElement.clientHeight - block.offsetHeight;
+      block.style.top = Math.max(0, Math.min(startTop + deltaY, maxTop)) + 'px';
+      // Da der Block jetzt unter dem Mauszeiger mitwandert, kann der Browser (wie schon beim
+      // Dauer-Resize, siehe starteResize) ein eigenes mouseenter auslösen und den Hover-Tooltip
+      // erneut einblenden – direkt über dem schwebenden Zeit-Indikator. Pro Bewegung einmal
+      // explizit wieder verstecken, statt sich auf ein einziges versteckeTooltip() beim
+      // Drag-Start zu verlassen.
+      versteckeTooltip();
       const el = document.elementFromPoint(ev.clientX, ev.clientY);
       const laneEl = el ? el.closest('.lane-normal, .lane-fango') : null;
       zielLane = (laneEl && laneEl.id.startsWith('vergleich-raster-')) ? laneEl : null;
-      if (zielLane) zielLane.classList.add('drop-ziel');
+      if (!zielLane) { versteckeZeitIndikator(); return; }
+      // ID-Muster: vergleich-raster-<seite>-<therapeut>-<normal|fango>. Statt des vorherigen
+      // flächigen Lane-Highlights (seit 2026-10-27, neunter Durchgang entfernt) zeigt jetzt die
+      // exakte, auf 5 Minuten gerundete Ziel-Uhrzeit als schwebender Indikator – genau wie beim
+      // Verschieben in der normalen Tagesansicht.
+      const teile = zielLane.id.split('-');
+      const bewegSeite = teile[2];
+      const bewegTherapeut = teile[3] === 'lukas' ? 'Lukas' : 'Andy';
+      const bewegDatum = vergleichDatumFuerSeite(bewegSeite);
+      if (!bewegDatum) { versteckeZeitIndikator(); return; }
+      const oz = vergleichOeffnungszeit(bewegDatum);
+      const rect = zielLane.getBoundingClientRect();
+      let minutenAbsolut = zeitToMinuten(oz.start) + (ev.clientY - rect.top) / VERGLEICH_PX_PRO_MINUTE;
+      minutenAbsolut = Math.max(zeitToMinuten(oz.start), Math.min(Math.round(minutenAbsolut / 5) * 5, zeitToMinuten(oz.ende) - termin.dauer_minuten));
+      zeigeVergleichZeitIndikator(minutenAbsolut, bewegSeite, bewegTherapeut, bewegSeite !== seite ? bewegDatum : null);
     }
 
     async function aufLoslassen(ev) {
       document.removeEventListener('mousemove', aufBewegen);
       document.removeEventListener('mouseup', aufLoslassen);
       block.classList.remove('vergleich-dragging');
-      if (zielLane) zielLane.classList.remove('drop-ziel');
+      vergleichVerschiebenAktiv = false;
+      versteckeZeitIndikator();
 
       if (!hatSichBewegt) {
         vergleichTerminOeffnen(seite, termin.id);
         return;
       }
-      if (!zielLane) return;
+
+      // Nach einem echten Zieh-Vorgang kann der Browser direkt im Anschluss trotzdem noch ein
+      // natives "click"-Event auslösen, dessen Ziel das Element unter der Maus beim Loslassen
+      // ist. Bei einem reinen Vertikal-Zug innerhalb derselben Lane landet der Block jetzt selbst
+      // darunter (siehe aufBewegen oben) und vergleichRasterKlick() ignoriert ihn ohnehin über
+      // `e.target !== e.currentTarget` – bei einem Spalten-/Tageswechsel bewegt sich der Block
+      // aber (genau wie in der Tagesansicht) nur vertikal, nicht horizontal mit, wodurch der
+      // Klick weiterhin auf dem leeren Ziel-Raster landen kann und sonst fälschlich ein zweites
+      // Mal das Anlegen-Modal öffnen würde (gemeldeter Bug, 2026-10-27, zehnter Durchgang: "wird
+      // ein neuer Termin angelegt"). Sperrt vergleichRasterKlick() dafür kurzzeitig über ein
+      // Modul-Flag statt über einen document-weiten Klick-Listener: ein `once:true`-Listener
+      // bliebe dauerhaft hängen und würde den nächstbesten, völlig unbeteiligten Klick irgendwo
+      // in der App schlucken, falls (wie z.B. im Playwright-Testharness beobachtet) nach einem
+      // synthetischen Drag gar kein natives click-Event feuert. Das Flag setzt sich dagegen im
+      // nächsten Tick garantiert selbst zurück, egal ob der Klick tatsächlich kommt oder nicht.
+      vergleichDragGeradeAbgeschlossen = true;
+      setTimeout(() => { vergleichDragGeradeAbgeschlossen = false; }, 0);
+
+      if (!zielLane) { renderVergleich(); return; } // außerhalb jedes gültigen Rasters losgelassen -> Block zurück an seine echte Position
       // ID-Muster: vergleich-raster-<seite>-<therapeut>-<normal|fango>
       const teile = zielLane.id.split('-');
       const zielSeite = teile[2];
-      if (zielSeite === seite) return; // kein Tageswechsel -> nichts tun
       const zielDatum = vergleichDatumFuerSeite(zielSeite);
-      if (!zielDatum) return;
+      if (!zielDatum) { renderVergleich(); return; }
       const zielTherapeut = teile[3] === 'lukas' ? 'Lukas' : 'Andy';
       const zielDatumStr = isoDatum(zielDatum);
 
@@ -3872,13 +4362,21 @@
       minutenAbsolut = Math.max(zeitToMinuten(oz.start), Math.min(Math.round(minutenAbsolut / 5) * 5, zeitToMinuten(oz.ende) - termin.dauer_minuten));
       let neueStartzeit = String(Math.floor(minutenAbsolut / 60)).padStart(2, '0') + ':' + String(minutenAbsolut % 60).padStart(2, '0');
 
-      // Konflikt am Zieltag prüfen (Raum/Therapeut) und ggf. auf die nächste freie Zeit springen.
+      // Keine echte Änderung (gleicher Tag, gleicher Therapeut, gleiche Uhrzeit) -> nichts tun.
+      if (zielDatumStr === termin.datum && zielTherapeut === termin.therapeut && neueStartzeit === termin.startzeit.slice(0, 5)) {
+        renderVergleich();
+        return;
+      }
+
+      // Konflikt am Zieltag prüfen (rein Therapeut, innerhalb derselben Lane – Fango/Massage läuft
+      // parallel und hat einen eigenen, unabhängigen Belegungs-Topf; Lukas/Andy sind unabhängige
+      // Spalten, kein Raum-Konflikt mehr über Therapeuten hinweg) und ggf. auf die nächste freie
+      // Zeit springen.
       const { data: zielTermine } = await db.from('termine').select('*').eq('datum', zielDatumStr);
       const eigeneFahrzeit = termin.ist_hausbesuch ? (termin.fahrzeit_minuten || 0) : 0;
       const terminEigeneSpalte = terminNutztEigeneSpalte(termin.behandlungstyp);
       const belegung = (zielTermine || []).filter(t => t.id !== termin.id && (
-        (termin.raum && t.raum === termin.raum) ||
-        (t.therapeut === zielTherapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte)
+        t.therapeut === zielTherapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte
       ));
       if (findeKonflikt(belegung, neueStartzeit, termin.dauer_minuten, eigeneFahrzeit)) {
         const frei = naechsteFreieZeit(belegung, termin.dauer_minuten, neueStartzeit, oz, eigeneFahrzeit);
@@ -3897,6 +4395,103 @@
     document.addEventListener('mouseup', aufLoslassen);
   }
 
+  // Schwebender Zeit-Indikator für die Vergleichsansicht (neu, 2026-10-27, neunter Durchgang) –
+  // Pendant zu zeigeZeitIndikator() der Tagesansicht, nur pro Seite (links/rechts) statt für ein
+  // einziges gemeinsames Raster. Positioniert sich wie dort links von Lukas' Raster bzw. an der
+  // jeweiligen Zeitachse für Andy. Zeigt beim Ziehen auf die ANDERE Tagesseite zusätzlich das
+  // Zieldatum an, damit beim Wechsel zwischen links/rechts klar bleibt, welcher Tag gemeint ist.
+  function zeigeVergleichZeitIndikator(minutenAbsolut, seite, zielTherapeut, andererTagDatum) {
+    const indikator = document.getElementById('zeit-indikator');
+    const oz = vergleichOeffnungszeit(vergleichDatumFuerSeite(seite));
+    const topPx = (minutenAbsolut - zeitToMinuten(oz.start)) * VERGLEICH_PX_PRO_MINUTE;
+    let ankerRect;
+    if (zielTherapeut === 'Lukas') {
+      ankerRect = document.getElementById(`vergleich-raster-${seite}-lukas`).getBoundingClientRect();
+      indikator.style.right = (window.innerWidth - ankerRect.left + 6) + 'px';
+    } else {
+      ankerRect = document.getElementById(`vergleich-zeitachse-${seite}`).getBoundingClientRect();
+      indikator.style.right = (window.innerWidth - ankerRect.right + 2) + 'px';
+    }
+    indikator.style.top = (ankerRect.top + topPx) + 'px';
+    let text = String(Math.floor(minutenAbsolut / 60)).padStart(2, '0') + ':' + String(minutenAbsolut % 60).padStart(2, '0');
+    if (andererTagDatum) text += ' · ' + andererTagDatum.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
+    indikator.textContent = text;
+    indikator.classList.add('sichtbar');
+  }
+
+  // ---- Drag-Resize der Termin-Dauer in der Vergleichsansicht (neu, 2026-10-27, neunter
+  // Durchgang) – volle Parität zur Tagesansicht (starteResize/aktualisiereDauer), nur mit der
+  // kleineren VERGLEICH_PX_PRO_MINUTE-Skalierung und einer frischen DB-Abfrage für den jeweiligen
+  // Tag statt des globalen aktuelleTagesTermine-Caches, der nur für die Tagesansicht gilt. ----
+  function vergleichStarteResize(event, termin, block, seite) {
+    if (event.button !== 0) return;
+    if (statusModusAktiv) { event.preventDefault(); event.stopPropagation(); toggleStatusAuswahl(termin, block); return; }
+    event.preventDefault();
+    event.stopPropagation(); // nicht gleichzeitig vergleichStarteDrag (Verschieben) auslösen
+    const startMausY = event.clientY;
+    const startHoehe = block.offsetHeight;
+    let hatSichBewegt = false;
+    versteckeTooltip();
+
+    function aufBewegen(ev) {
+      const deltaY = ev.clientY - startMausY;
+      if (!hatSichBewegt && Math.abs(deltaY) < 4) return;
+      if (!hatSichBewegt) { hatSichBewegt = true; resizeAktiv = true; block.classList.add('resizing'); baueResizeLineal(block, VERGLEICH_PX_PRO_MINUTE); }
+      versteckeTooltip();
+      let neueHoeheRoh = Math.max(20, startHoehe + deltaY);
+      const maxHoehe = block.parentElement.clientHeight - parseFloat(block.style.top);
+      neueHoeheRoh = Math.min(neueHoeheRoh, maxHoehe);
+      const roheDauer = neueHoeheRoh / VERGLEICH_PX_PRO_MINUTE;
+      const gerasteteDauer = Math.max(5, Math.round(roheDauer / 5) * 5);
+      block.style.height = (gerasteteDauer * VERGLEICH_PX_PRO_MINUTE) + 'px';
+      zeigeResizeDauerIndikator(block, gerasteteDauer, termin, VERGLEICH_PX_PRO_MINUTE);
+    }
+
+    function aufLoslassen() {
+      document.removeEventListener('mousemove', aufBewegen);
+      document.removeEventListener('mouseup', aufLoslassen);
+      versteckeResizeLineal();
+      resizeAktiv = false;
+
+      if (!hatSichBewegt) {
+        vergleichTerminOeffnen(seite, termin.id);
+        return;
+      }
+
+      block.classList.remove('resizing');
+      const neueHoeheFinal = parseFloat(block.style.height);
+      let neueDauer = Math.max(5, Math.round((neueHoeheFinal / VERGLEICH_PX_PRO_MINUTE) / 5) * 5);
+      if (neueDauer === termin.dauer_minuten) { renderVergleich(); return; } // keine echte Änderung
+      vergleichAktualisiereDauer(termin, neueDauer);
+    }
+
+    document.addEventListener('mousemove', aufBewegen);
+    document.addEventListener('mouseup', aufLoslassen);
+  }
+
+  async function vergleichAktualisiereDauer(termin, neueDauer) {
+    const oz = vergleichOeffnungszeit(new Date(termin.datum + 'T00:00:00'));
+    const { data: tagesTermine } = await db.from('termine').select('*').eq('datum', termin.datum);
+    const eigeneFahrzeit = termin.ist_hausbesuch ? (termin.fahrzeit_minuten || 0) : 0;
+    const terminEigeneSpalte = terminNutztEigeneSpalte(termin.behandlungstyp);
+    const belegung = (tagesTermine || []).filter(t => t.id !== termin.id && (
+      t.therapeut === termin.therapeut && terminNutztEigeneSpalte(t.behandlungstyp) === terminEigeneSpalte
+    ));
+    if (findeKonflikt(belegung, termin.startzeit.slice(0, 5), neueDauer, eigeneFahrzeit)) {
+      const startMin = zeitToMinuten(termin.startzeit.slice(0, 5));
+      let grenze = zeitToMinuten(oz.ende) - eigeneFahrzeit;
+      belegung.forEach(t => {
+        const fenster = belegtesFenster(t);
+        if (fenster.start > startMin && fenster.start < grenze) grenze = fenster.start;
+      });
+      neueDauer = Math.max(5, grenze - startMin - eigeneFahrzeit);
+    }
+    const { error } = await db.from('termine').update({ dauer_minuten: neueDauer }).eq('id', termin.id);
+    if (error) { alert('Fehler beim Ändern der Dauer: ' + error.message); renderVergleich(); return; }
+    protokolliere(termin.id, 'bearbeitet', `${termin.patientenname}: Dauer ${termin.dauer_minuten} → ${neueDauer} Min`, termin.datum);
+    renderVergleich();
+  }
+
   function vergleichNeuerTermin(seite, therapeut) {
     const datum = vergleichDatumFuerSeite(seite);
     if (!datum) return;
@@ -3906,6 +4501,7 @@
   }
 
   function vergleichRasterKlick(e, seite, therapeut) {
+    if (vergleichDragGeradeAbgeschlossen) return; // direkt nach einem Verschiebe-Drag (s.o.) – kein neuer Termin
     if (e.target !== e.currentTarget) return; // Klick ging auf einen Termin-Block, nicht auf freie Fläche
     const datum = vergleichDatumFuerSeite(seite);
     if (!datum) return;
@@ -3951,7 +4547,7 @@
     const basis = vergleichsDatum || ausgewaehltesDatum;
     const neu = new Date(basis);
     neu.setDate(neu.getDate() + delta);
-    vergleichsDatum = neu;
+    vergleichsDatum = naechsterWerktag(neu, delta >= 0 ? 1 : -1);
     renderVergleich();
   }
 
@@ -3963,14 +4559,17 @@
     const jahr = vergleichKalenderDatum.getFullYear();
     const monat = vergleichKalenderDatum.getMonth();
     const ersterTag = new Date(jahr, monat, 1);
-    const startOffset = (ersterTag.getDay() + 6) % 7;
+    const wochentagRoh = (ersterTag.getDay() + 6) % 7; // Mo=0..So=6
+    const startOffset = wochentagRoh <= 4 ? wochentagRoh : 0;
     const tageImMonat = new Date(jahr, monat + 1, 0).getDate();
     for (let i = 0; i < startOffset; i++) {
       const vorherigerTag = new Date(jahr, monat, i - startOffset + 1);
       tageContainer.appendChild(erstelleVergleichTagButton(vorherigerTag, true));
     }
     for (let tag = 1; tag <= tageImMonat; tag++) {
-      tageContainer.appendChild(erstelleVergleichTagButton(new Date(jahr, monat, tag), false));
+      const datum = new Date(jahr, monat, tag);
+      if (istWochenende(datum)) continue;
+      tageContainer.appendChild(erstelleVergleichTagButton(datum, false));
     }
   }
 
@@ -4223,23 +4822,16 @@
   }
 
   // ---- Druckbarer Tagesplan ----
-  function druckeTagesplan() {
-    document.getElementById('druck-datum').textContent = formatierterTitel(ausgewaehltesDatum);
-    const body = document.getElementById('druck-tabelle-body');
-    const sortiert = [...aktuelleTagesTermine].sort((a, b) => a.startzeit.localeCompare(b.startzeit));
-    if (!sortiert.length) {
-      body.innerHTML = '<tr><td colspan="5">Keine Termine an diesem Tag.</td></tr>';
-    } else {
-      body.innerHTML = sortiert.map(t => `
-        <tr>
-          <td>${t.startzeit.slice(0, 5)} &ndash; ${addMinuten(t.startzeit.slice(0, 5), t.dauer_minuten)}</td>
-          <td>${t.therapeut}</td>
-          <td>${t.ist_hausbesuch ? 'Hausbesuch' : t.raum}</td>
-          <td>${t.patientenname}</td>
-          <td>${t.behandlungstyp}</td>
-        </tr>
-      `).join('');
+  // Druckt den Tagesplan jetzt als farbiges Abbild des echten Kalenderrasters (siehe
+  // @media print oben), nicht mehr als separate Text-Tabelle. Die Vorschau/Woche/Vergleichs-
+  // Ansicht kann nicht gedruckt werden – deshalb wird vorher immer auf die Tagesansicht
+  // gewechselt, falls gerade eine andere Ansicht aktiv ist.
+  async function druckeTagesplan() {
+    if (ansichtstyp !== 'tag') {
+      setzeAnsichtstyp('tag');
+      await new Promise(r => setTimeout(r, 150)); // kurz warten, bis ladeTermine() fertig gerendert hat
     }
+    document.getElementById('druck-kopf-datum').textContent = formatierterTitel(ausgewaehltesDatum);
     window.print();
   }
 
