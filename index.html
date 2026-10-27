@@ -439,7 +439,9 @@
     padding: 5px 10px;
     font-size: 14px;
     cursor: grab;
-    overflow: hidden;
+    overflow: visible; /* Zeit/Kürzel/Name sollen bei Platzmangel umbrechen (siehe .zeile-haupt)
+                           und bei Bedarf sichtbar über den Block hinausragen, statt abgeschnitten
+                           zu werden – Lesbarkeit geht vor exakter optischer/Raster-Begrenzung. */
     z-index: 1;
     transition: box-shadow 0.15s, background 0.15s, filter 0.15s;
     user-select: none;
@@ -447,12 +449,12 @@
   .termin-block:hover {
     background: color-mix(in srgb, var(--termin-farbe) 24%, white);
     box-shadow: var(--schatten-md);
+    z-index: 6;
   }
-  /* Sehr kurze Termine: Block bleibt klein (Zeitraster bleibt exakt), aber der Inhalt darf
-     sichtbar über den Block hinausragen statt abgeschnitten zu werden – Lesbarkeit geht hier
-     vor exakter optischer Begrenzung. */
-  .termin-block.kompakt { overflow: visible; z-index: 3; }
-  .termin-block.kompakt:hover { z-index: 6; }
+  /* Sehr kurze Termine: Block bleibt klein (Zeitraster bleibt exakt), Inhalt darf darüber
+     hinausragen (gewollt, siehe oben). Eigener Basis-z-index, damit ein kompakter Block im
+     Ruhezustand schon leicht über unveränderten Blöcken liegt. */
+  .termin-block.kompakt { z-index: 3; }
   /* Ziehbarer Griff am unteren Blockrand, um die Dauer per Drag zu verändern */
   .termin-block .resize-griff {
     position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize;
@@ -499,9 +501,14 @@
     text-overflow: ellipsis;
   }
   /* Haupt-Zeile Zeit · Kürzel · Name – immer groß & deutlich markiert, unabhängig von der
-     Blockgröße/Dauer des Termins (auch bei sehr kurzen Terminen gut lesbar). */
+     Blockgröße/Dauer des Termins (auch bei sehr kurzen Terminen gut lesbar). Alle drei Teile
+     müssen immer vollständig sichtbar sein: reicht die Breite nicht (v.a. schmale Fango/
+     Massage-Lane), bricht die Zeile um, statt per Ellipsis abgeschnitten zu werden – der Block
+     darf dafür höher werden (siehe overflow:visible oben bzw. .kompakt unten). Horizontal bleibt
+     alles trotzdem innerhalb der Blockbreite (kein erneutes "Unreinheiten"-Problem), weil lange
+     Wörter nötigenfalls selbst umbrechen (overflow-wrap). */
   .termin-block .zeile-haupt {
-    display: flex; align-items: baseline; gap: 6px; flex-wrap: nowrap;
+    display: flex; align-items: baseline; gap: 3px 6px; flex-wrap: wrap;
     font-size: 14.5px; font-weight: 700; color: var(--text); line-height: 1.3;
     overflow: hidden; /* Sicherheitsnetz: nichts darf aus dem Block heraus in Nachbar-Termine laufen */
   }
@@ -509,25 +516,24 @@
   .termin-block .zeile-haupt .kuerzel {
     font-weight: 700; font-size: 12.5px; color: var(--termin-farbe);
     background: color-mix(in srgb, var(--termin-farbe) 16%, white);
-    border-radius: 5px; padding: 1px 7px; flex-shrink: 0; white-space: nowrap;
-    max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+    border-radius: 5px; padding: 1px 7px;
+    min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
   }
   .termin-block .zeile-haupt .name {
-    font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    flex: 1 1 auto; min-width: 0;
+    font-weight: 700; white-space: normal; overflow-wrap: anywhere;
+    flex: 1 1 auto; min-width: 0; max-width: 100%;
   }
   .termin-block .zeile-haupt .icon-mini, .termin-block .zeile-haupt .status-icon { flex-shrink: 0; }
   .termin-block.kompakt {
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* statt center: zusätzliche umgebrochene Zeilen wachsen nach
+                                 unten (wie von Lukas gewünscht), nicht gleichmäßig nach oben
+                                 UND unten über den Zeitslot hinaus */
     padding: 3px 10px;
   }
   /* .zeile-haupt ist hier selbst ein Flex-Item (weil .kompakt display:flex ist) – ohne
-     min-width:0 würde es nie unter seine Inhaltsbreite schrumpfen und die Ellipsis des
-     Namens innen würde nie greifen. Sehr kurze Termine dürfen in der Höhe über den Block
-     hinausragen (Lesbarkeit vor exakter Rastertreue) – aber Zeit/Kürzel/Name bleiben
-     trotzdem per Ellipsis auf die Blockbreite begrenzt, damit der Text nicht in
-     Nachbar-Termine oder -Spalten hineinläuft. */
+     min-width:0 würde es nie unter seine Inhaltsbreite schrumpfen und der Umbruch innen würde
+     nie greifen, der Block liefe stattdessen horizontal in Nachbar-Termine hinein. */
   .termin-block.kompakt .zeile-haupt { flex: 1 1 auto; min-width: 0; }
 
   .tooltip {
