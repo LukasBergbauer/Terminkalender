@@ -267,17 +267,27 @@
           </div>
           <div class="sidebar-box">
             <h3>Backup</h3>
-            <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">Exportiert Termine, Patienten und Heilmittel als Sicherungsdatei zum lokalen Speichern – wahlweise alles, nur ein Monat oder nur ein Jahr, jeweils in einer Datei.</p>
+            <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">Erstellt zwei Dateien, die du jeweils selbst an einem Ort deiner Wahl speicherst: ein PDF (Termine und Patienten in Schriftform) und eine JSON-Datei, die sich über „Backup öffnen“ wieder als Kalender anzeigen lässt – wahlweise alles, nur ein Monat oder nur ein Jahr.</p>
             <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
               <select id="backup-zeitraum-typ" onchange="backupZeitraumTypGeaendert()" style="font-size:12px; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text);">
                 <option value="alles">Gesamter Zeitraum</option>
                 <option value="monat">Ein bestimmter Monat</option>
                 <option value="jahr">Ein bestimmtes Jahr</option>
               </select>
-              <input type="month" id="backup-monat-wert" class="hidden" style="font-size:12px; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text);">
-              <input type="number" id="backup-jahr-wert" class="hidden" min="2000" max="2100" placeholder="Jahr, z.B. 2026" style="font-size:12px; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); width:110px;">
+              <input type="month" id="backup-monat-wert" class="hidden" oninput="backupVorbereitungVerwerfen()" style="font-size:12px; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text);">
+              <input type="number" id="backup-jahr-wert" class="hidden" min="2000" max="2100" placeholder="Jahr, z.B. 2026" oninput="backupVorbereitungVerwerfen()" style="font-size:12px; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); width:110px;">
             </div>
-            <button class="primary-btn" style="padding:8px; font-size:12px; width:auto; padding-left:16px; padding-right:16px;" onclick="backupExportieren()">Backup jetzt exportieren</button>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="primary-btn" style="padding:8px; font-size:12px; width:auto; padding-left:16px; padding-right:16px;" onclick="backupExportieren()">Backup jetzt exportieren</button>
+              <button class="primary-btn" style="padding:8px; font-size:12px; width:auto; padding-left:16px; padding-right:16px;" onclick="backupOeffnenKlick()" title="Eine gespeicherte JSON-Backup-Datei in der Kalenderansicht anzeigen (nur lesen)">Backup öffnen</button>
+              <input type="file" id="backup-datei-input" class="hidden" accept=".json,application/json" onchange="backupDateiGewaehlt(this)">
+            </div>
+            <!-- Erscheint nach "Backup jetzt exportieren": zwei eigene Klicks, weil der Browser das
+                 "Speichern unter"-Fenster nur direkt nach einem Klick öffnen darf (je Datei einmal). -->
+            <div id="backup-speichern-leiste" class="hidden" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+              <button class="primary-btn" id="backup-pdf-btn" style="padding:8px; font-size:12px; width:auto; padding-left:16px; padding-right:16px;" onclick="backupPdfSpeichern()">PDF speichern…</button>
+              <button class="primary-btn" id="backup-json-btn" style="padding:8px; font-size:12px; width:auto; padding-left:16px; padding-right:16px;" onclick="backupJsonSpeichern()">JSON speichern…</button>
+            </div>
             <div id="backup-status" style="font-size:11px; margin-top:6px; min-height:14px; color:var(--muted);"></div>
           </div>
           <div class="sidebar-box protokoll-box">
@@ -293,7 +303,7 @@
               <li>Es werden nur organisatorische Daten gespeichert (Name, Telefon, Termin-Notiz) – nie Diagnosen oder Befunde. Bitte Notizfelder auch künftig so nutzen.</li>
               <li>Zugriff nur mit Login, Daten liegen bei Supabase in Frankfurt (EU).</li>
               <li>Ein automatischer Abmelde-Timeout existiert bewusst noch nicht – auf einem gemeinsam genutzten Praxis-Rechner nach der Nutzung manuell abmelden bzw. den Bildschirm sperren.</li>
-              <li>Backup-Dateien (JSON) enthalten alle Patientendaten im Klartext – nach dem Export sicher ablegen, nicht unverschlüsselt verschicken, alte Backups bei Bedarf löschen.</li>
+              <li>Backup-Dateien (JSON und PDF) enthalten alle Patientendaten im Klartext – nach dem Export sicher ablegen, nicht unverschlüsselt verschicken, alte Backups bei Bedarf löschen.</li>
               <li>Das Code-Repository auf GitHub ist öffentlich, enthält aber nur den technischen "publishable key" (ohne Login nutzlos) – keine Patientendaten und kein geheimer Schlüssel im Code.</li>
             </ul>
 
@@ -665,6 +675,50 @@
     </div>
     <div id="terminsuche-schritt-auswahl" class="hidden">
       <div id="terminsuche-auswahl-inhalt"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Backup-Ansicht (seit 2026-10-28): zeigt eine gespeicherte JSON-Backup-Datei tageweise als
+     Kalender (Andy/Lukas nebeneinander, wie die Vergleichsansicht), nur zum Ansehen. Die Daten
+     kommen ausschließlich aus der gewählten Datei, nichts wird in die Datenbank geschrieben.
+     Steht bewusst VOR #termin-tooltip, damit der Tooltip per CSS (~) darüber liegen kann. -->
+<div id="backup-ansicht-overlay" class="hidden">
+  <div id="backup-ansicht-modal">
+    <div class="vergleich-kopf">
+      <h3>Backup-Ansicht</h3>
+      <button class="modal-schliessen-btn" onclick="schliesseBackupAnsicht()" title="Schließen">&times;</button>
+    </div>
+    <p class="backup-ansicht-hinweis" id="backup-ansicht-quelle"></p>
+    <div class="backup-ansicht-nav">
+      <div class="vergleich-tag-nav">
+        <button type="button" id="backup-ansicht-zurueck" onclick="backupAnsichtTagWechseln(-1)" title="Vorheriger Tag mit Terminen">&#8592;</button>
+        <h3 id="backup-ansicht-titel"></h3>
+        <button type="button" id="backup-ansicht-vor" onclick="backupAnsichtTagWechseln(1)" title="Nächster Tag mit Terminen">&#8594;</button>
+      </div>
+      <input type="date" id="backup-ansicht-datum" onchange="backupAnsichtDatumGewaehlt(this.value)" title="Tag direkt wählen">
+    </div>
+    <div id="backup-ansicht-scroll">
+      <div class="vergleich-tag" id="backup-ansicht-tag">
+        <div class="vergleich-zeitachse-spalte">
+          <div class="vergleich-therapeut-kopf">Platzhalter</div>
+          <div class="vergleich-zeitachse" id="backup-ansicht-zeitachse"></div>
+        </div>
+        <div class="vergleich-therapeut-spalte">
+          <div class="vergleich-therapeut-kopf">Andy</div>
+          <div class="zeitraster vergleich-raster" id="backup-raster-andy">
+            <div class="lane lane-normal" id="backup-raster-andy-normal"></div>
+            <div class="lane lane-fango" id="backup-raster-andy-fango"></div>
+          </div>
+        </div>
+        <div class="vergleich-therapeut-spalte">
+          <div class="vergleich-therapeut-kopf">Lukas</div>
+          <div class="zeitraster vergleich-raster" id="backup-raster-lukas">
+            <div class="lane lane-normal" id="backup-raster-lukas-normal"></div>
+            <div class="lane lane-fango" id="backup-raster-lukas-fango"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

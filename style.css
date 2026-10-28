@@ -617,7 +617,7 @@
   .termin-block.ausgewaehlt .meta { display: block; }
 
   /* Modal */
-  #modal-overlay, #patient-modal-overlay, #verordnung-modal-overlay, #warteliste-modal-overlay, #vorschau-modal-overlay, #patientensuche-overlay, #terminsuche-overlay {
+  #modal-overlay, #patient-modal-overlay, #verordnung-modal-overlay, #warteliste-modal-overlay, #vorschau-modal-overlay, #patientensuche-overlay, #terminsuche-overlay, #backup-ansicht-overlay {
     position: fixed; inset: 0;
     background: rgba(17,17,30,0.42);
     backdrop-filter: blur(3px);
@@ -1358,6 +1358,31 @@
   .hausbesuch-karte .zeit { font-weight: 700; font-size: 13px; }
   .hausbesuch-karte .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .hausbesuch-karte .adresse { font-size: 12px; color: var(--text); margin-top: 4px; }
+
+  /* Backup-Ansicht (seit 2026-10-28): gespeicherte JSON-Backup-Datei tageweise als Kalender,
+     nur zum Ansehen. Nutzt dieselben Raster-/Block-Klassen wie die Vergleichsansicht; hier werden
+     nur das Fenster selbst und das Abschalten aller Bearbeiten-Elemente ergänzt. */
+  #backup-ansicht-modal {
+    background: var(--card); border-radius: 18px; padding: 26px;
+    width: 820px; max-width: 100%; max-height: 88vh;
+    display: flex; flex-direction: column;
+    box-shadow: var(--schatten-lg);
+    animation: modal-einblenden 0.18s cubic-bezier(.2,.9,.3,1.1);
+  }
+  #backup-ansicht-modal > .vergleich-kopf h3 { margin: 0; font-size: 19px; font-weight: 700; }
+  .backup-ansicht-hinweis { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+  .backup-ansicht-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .backup-ansicht-nav h3 { margin: 0 6px; font-size: 14px; font-weight: 700; }
+  .backup-ansicht-nav .vergleich-tag-nav button:disabled { opacity: 0.35; cursor: default; background: none; }
+  #backup-ansicht-datum {
+    font-size: 12px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-family: inherit;
+  }
+  #backup-ansicht-scroll { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+  #backup-ansicht-modal .lane-normal, #backup-ansicht-modal .termin-block { cursor: default; }
+  #backup-ansicht-modal .block-loesch-btn, #backup-ansicht-modal .resize-griff { display: none !important; }
+  /* Der Hover-Tooltip (z-index 100) läge sonst hinter dem Fenster-Hintergrund (z-index 200). */
+  #backup-ansicht-overlay:not(.hidden) ~ .tooltip { z-index: 210; }
   /* Drucken: statt eines separaten Schreibdokuments (alte Tabellen-Ansicht) wird jetzt der
      echte, farbige Tageskalender gedruckt – wie ein Screenshot des Bildschirms auf Papier.
      Dafür bleibt die komplette App-Struktur im DOM, es werden nur gezielt Bedienelemente
@@ -1372,7 +1397,7 @@
     #modal-overlay, #patient-modal-overlay, #verordnung-modal-overlay,
     #warteliste-modal-overlay, #vorschau-modal-overlay,
     .tooltip, .zeit-indikator, .resize-lineal, .resize-dauer-indikator, .terminsuche-balken,
-    .farbe-popover, .mini-kalender-popover, .notiz-fenster, #patientensuche-overlay, #terminsuche-overlay {
+    .farbe-popover, .mini-kalender-popover, .notiz-fenster, #patientensuche-overlay, #terminsuche-overlay, #backup-ansicht-overlay {
       display: none !important;
     }
     #druck-kopf { display: block !important; margin-bottom: 14px; }
