@@ -76,13 +76,21 @@
   // (die EIGENE Blockhöhe, zusätzlich gedeckelt durch den Abstand zum nächsten Termin derselben
   // Lane als zweite Sicherheitsgrenze) und die Schrift stufenweise verkleinern, bis der Inhalt
   // hineinpasst oder die Mindestgröße erreicht ist.
-  const SCHRUMPF_SCHRITTE = [14.5, 13.5, 12.5, 11.5, 10.5, 9.5];
+  // Seit 2026-10-28 größere Schrift und feste Mindestgröße (Lukas: Zeit, Heilmittel und Name
+  // müssen bei jeder Termindauer gut lesbar sein). Ablauf: erst mehrzeilig (umbrechend) mit
+  // 16/15/14px versuchen; passt das nicht, alle drei Angaben in EINE Zeile nebeneinander setzen
+  // (Klasse .einzeiler) und dort höchstens bis 13px verkleinern – nie kleiner.
+  const SCHRUMPF_SCHRITTE = [16, 15, 14];
+  const SCHRUMPF_SCHRITTE_EINZEILIG = [16, 15, 14, 13];
   function blockInhaltHoehe(block) {
     const blockRect = block.getBoundingClientRect();
     let unten = blockRect.top;
     Array.from(block.children).forEach(el => {
       if (el.classList.contains('resize-griff') || el.classList.contains('block-loesch-btn')) return;
       const r = el.getBoundingClientRect();
+      // Ausgeblendete Elemente (z.B. .meta mit display:none) liefern ein leeres Rechteck bei 0/0 –
+      // nicht mitzählen, sonst wird bei heruntergescrollter Seite eine falsche Höhe gemessen.
+      if (r.width === 0 && r.height === 0) return;
       if (r.bottom > unten) unten = r.bottom;
     });
     const paddingUnten = parseFloat(getComputedStyle(block).paddingBottom) || 0;
@@ -109,11 +117,17 @@
         eintrag.el.style.setProperty('--block-schrift', schrift + 'px');
         if (blockInhaltHoehe(eintrag.el) <= verfuegbar) { passt = true; break; }
       }
-      // Extremfall (sehr kurzer Termin direkt vor dem nächsten + sehr langer Name): selbst die
-      // Mindestschrift reicht nicht aus. Letzter Ausweg, um ein Hineinlaufen in den nächsten
-      // Termin trotzdem zu verhindern: Kürzel/Name einzeilig mit "…" abschneiden (Details bleiben
-      // über Hover/Klick weiterhin vollständig abrufbar).
-      if (!passt) eintrag.el.classList.add('einzeiler');
+      // Kurzer Termin: Zeit · Kürzel · Name in eine Zeile nebeneinander (Zeit und Kürzel immer
+      // vollständig, nur ein sehr langer Name wird bei zu schmaler Spalte mit "…" gekürzt – voller
+      // Name über Hover/Klick). Schrift so groß wie möglich, mindestens 13px (letzter Schritt bleibt
+      // stehen, auch wenn selbst der nicht ganz passt).
+      if (!passt) {
+        eintrag.el.classList.add('einzeiler');
+        for (const schrift of SCHRUMPF_SCHRITTE_EINZEILIG) {
+          eintrag.el.style.setProperty('--block-schrift', schrift + 'px');
+          if (blockInhaltHoehe(eintrag.el) <= verfuegbar) break;
+        }
+      }
     });
   }
 

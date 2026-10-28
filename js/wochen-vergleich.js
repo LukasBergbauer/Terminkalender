@@ -138,7 +138,10 @@
   //      inkl. Möglichkeit, direkt neue Termine anzulegen (vergleichNeuerTermin/-RasterKlick). ----
   let vergleichsDatum = null;
   let vergleichKalenderDatum = new Date();
-  const VERGLEICH_PX_PRO_MINUTE = 1.0; // 60px/Stunde – seit 2026-10-27 (zwölfter Durchgang) von 0.8 auf 1.0 angehoben,
+  // Seit 2026-10-28 auf 1.2 (72px/Stunde, wie die Tagesansicht) angehoben: Lukas wollte die
+  // Vergleichsansicht größer, damit Zeit, Heilmittel und Name auch bei kurzen Terminen gut lesbar
+  // sind. Gilt automatisch auch für die Backup-Ansicht. Ältere Notiz:
+  const VERGLEICH_PX_PRO_MINUTE = 1.2; // vorher 1.0 (60px/Stunde) – seit 2026-10-27 (zwölfter Durchgang) von 0.8 auf 1.0 angehoben,
   // da nach der vertikalen Zentrierung (s.o.) in der Vergleichsansicht weiterhin spürbar mehr
   // Leerraum unter der Karte übrig blieb als in der Tagesansicht (von Lukas explizit gewünscht:
   // "etwas vergrößert"). Bleibt bewusst unter den 72px/Std. (1.2) der Tagesansicht, damit zwei
