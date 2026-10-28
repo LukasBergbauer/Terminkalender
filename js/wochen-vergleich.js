@@ -208,6 +208,22 @@
     document.getElementById(`vergleich-raster-${seite}-lukas`).style.height = hoeheGesamt + 'px';
     document.getElementById(`vergleich-raster-${seite}-andy`).style.height = hoeheGesamt + 'px';
 
+    // Rasterlinien wie in der Tagesansicht: eine Linie pro VOLLER Stunde (seit 2026-10-28).
+    // Vorher kamen die Linien aus dem CSS mit festem 48px-Abstand, bei 60px/Stunde
+    // (VERGLEICH_PX_PRO_MINUTE) lagen sie also alle 48 Minuten und passten nicht zu den
+    // Uhrzeiten der Termine. Abstand und Versatz werden jetzt aus der Skalierung und der
+    // Öffnungszeit des Tages berechnet: Beginnt der Tag z.B. um 07:30, liegt die erste Linie
+    // 30 Minuten tiefer auf 08:00, genau auf Höhe des Zeitachsen-Labels.
+    const stundePx = 60 * VERGLEICH_PX_PRO_MINUTE;
+    const linienVersatzPx = ((60 - (startMin % 60)) % 60) * VERGLEICH_PX_PRO_MINUTE;
+    ['lukas', 'andy'].forEach(name => {
+      const raster = document.getElementById(`vergleich-raster-${seite}-${name}`);
+      raster.style.backgroundImage = 'linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px)';
+      raster.style.backgroundSize = `100% ${stundePx}px`;
+      raster.style.backgroundRepeat = 'repeat-y';
+      raster.style.backgroundPosition = `0 ${linienVersatzPx}px`;
+    });
+
     if (error) return;
     let termine = data || [];
     if (ansichtsFilter === 'lukas') termine = termine.filter(t => t.therapeut === 'Lukas');
