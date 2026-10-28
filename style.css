@@ -1,0 +1,1403 @@
+  :root {
+    --blau: #4F46E5;
+    --violett: #9333EA;
+    --pink: #EC4899;
+    --gruen: #16A34A;
+    --orange: #F97316;
+    --tuerkis: #0D9488;
+    --gelb: #EAB308;
+    --rot: #DC2626;
+    --limette: #65A30D;
+    --cyan: #0891B2;
+    --indigo: #3730A3;
+    --magenta: #C026D3;
+    --braun: #92400E;
+    --grau: #52525B;
+    --bg: #FAFAFB;
+    --card: #FFFFFF;
+    --text: #1F2937;
+    --muted: #6B7280;
+    --border: #E5E7EB;
+    --radius: 16px;
+    --schatten-sm: 0 1px 3px rgba(17,17,30,0.04), 0 1px 2px rgba(17,17,30,0.03);
+    --schatten-md: 0 4px 16px rgba(17,17,30,0.06);
+    --schatten-lg: 0 16px 40px rgba(17,17,30,0.14);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+    min-height: 100vh;
+    /* Vertikale Zentrierung (seit 2026-10-27, zwölfter Durchgang): #app saß vorher ohne jede
+       vertikale Zentrierung direkt oben (nur 24px Padding), wodurch auf hohen Bildschirmen viel
+       ungenutzter Leerraum unten entstand (von Lukas gemeldet, v.a. in der Vergleichsansicht
+       auffällig). `justify-content: safe center` zentriert #app (bzw. #login-screen, das sich
+       bereits selbst zentriert) vertikal, FÄLLT aber auf Top-Ausrichtung zurück, sobald der
+       Inhalt höher als der sichtbare Bereich ist ("safe") – dadurch bleibt der obere Rand
+       (Header/Navigation) immer erreichbar und wird nie nach oben aus dem Bildschirm
+       herausgeschoben, ganz unabhängig von der Bildschirmhöhe. */
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(640px circle at 6% -6%, rgba(79,70,229,0.07), transparent 60%),
+      radial-gradient(560px circle at 100% 0%, rgba(236,72,153,0.07), transparent 55%),
+      radial-gradient(900px circle at 50% 110%, rgba(147,51,234,0.05), transparent 55%);
+  }
+  .hidden { display: none !important; }
+  ::selection { background: rgba(147,51,234,0.18); }
+  input:focus, select:focus, button:focus-visible {
+    outline: 2px solid rgba(147,51,234,0.35);
+    outline-offset: 1px;
+  }
+
+  /* Login */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  #login-box {
+    background: var(--card);
+    padding: 44px 40px;
+    border-radius: 22px;
+    box-shadow: var(--schatten-lg);
+    width: 340px;
+    max-width: 100%;
+    text-align: center;
+  }
+  #login-box .login-logo {
+    width: 52px; height: 52px;
+    margin: 0 auto 18px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--blau), var(--violett), var(--pink));
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 20px rgba(147,51,234,0.25);
+  }
+  #login-box .login-logo svg { width: 26px; height: 26px; color: white; }
+  #login-box h1 {
+    font-size: 21px;
+    font-weight: 800;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+    background: linear-gradient(90deg, var(--blau), var(--violett), var(--pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  #login-box .login-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 26px;
+  }
+  #login-box input {
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  #login-box input:focus {
+    border-color: var(--violett);
+    box-shadow: 0 0 0 3px rgba(147,51,234,0.12);
+    outline: none;
+  }
+  #login-box button, .primary-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--blau), var(--pink));
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  #login-box button:hover, .primary-btn:hover { opacity: 0.92; }
+  #login-box button:active, .primary-btn:active { transform: scale(0.98); }
+  #login-error { color: #DC2626; font-size: 13px; margin-top: 10px; min-height: 16px; }
+
+  /* App shell */
+  #app { max-width: 1320px; margin: 0 auto; padding: 24px 16px 60px; animation: app-einblenden 0.35s ease; transition: max-width 0.15s ease; }
+  /* Vergleichsansicht zeigt zwei Tage nebeneinander – braucht mehr Breite als die normale
+     Tagesansicht, damit die Spalten nicht zu schmal werden und unnötig oft umbrechen. */
+  #app.vergleich-breit { max-width: 1760px; }
+  @keyframes app-einblenden { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .app-layout { display: flex; gap: 20px; align-items: flex-start; }
+  .hauptbereich { flex: 1; min-width: 0; }
+  @media (max-width: 860px) {
+    .icon-rail { position: static !important; width: 100% !important; flex-direction: row !important; transform: none !important; margin-bottom: 16px; }
+  }
+
+  .icon-rail {
+    position: fixed;
+    left: 14px; top: 50%;
+    transform: translateY(-50%);
+    width: 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    background: #EEEEF1;
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: width 0.18s ease, box-shadow 0.18s ease;
+    z-index: 50;
+  }
+  .icon-rail:hover {
+    width: 196px;
+    box-shadow: var(--schatten-lg);
+  }
+  .rail-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: none;
+    background: none;
+    border-radius: 10px;
+    padding: 10px;
+    cursor: pointer;
+    color: var(--muted);
+    white-space: nowrap;
+    width: 100%;
+    transition: background 0.15s, color 0.15s;
+  }
+  .rail-item:hover { background: rgba(0,0,0,0.05); }
+  .rail-item.aktiv { background: white; color: var(--violett); box-shadow: var(--schatten-sm); }
+  .rail-item.aktiv .rail-icon { color: var(--violett); }
+  .rail-icon { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+  .rail-icon svg { width: 18px; height: 18px; }
+  .rail-label { font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.12s ease; }
+  .icon-rail:hover .rail-label { opacity: 1; }
+
+  /* Notiz-Eck-Knopf: eigenständig, unten links, gleiche Spalte wie icon-rail (gleicher linker
+     Abstand 14px), aber losgelöst davon – rein funktionaler Klick-Knopf ohne Hover-Aufklapp-
+     Verhalten der icon-rail. */
+  .notiz-ecke-btn {
+    position: fixed; left: 14px; bottom: 14px;
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    border: none; border-radius: 10px;
+    background: #EEEEF1; color: var(--muted);
+    cursor: pointer; z-index: 50;
+    transition: background 0.15s, color 0.15s;
+  }
+  .notiz-ecke-btn:hover { background: #E2E1E6; color: var(--text); }
+  .notiz-ecke-btn svg { width: 18px; height: 18px; }
+  @media (max-width: 860px) { .notiz-ecke-btn { left: auto; right: 14px; bottom: 14px; } }
+
+  .sidebar-box {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--schatten-sm);
+  }
+  .sidebar-box h3 { margin: 0 0 10px; font-size: 13px; color: var(--text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  /* Einstellungen laufen in Zeilen untereinander ab (Überschrift oben, Einstellung darunter),
+     nicht mehr als zweispaltiges Grid nebeneinander. */
+  .einstellungen-grid { display: flex; flex-direction: column; gap: 16px; max-width: 820px; }
+
+  .mini-kalender-kopf {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 13px; font-weight: 600; margin-bottom: 10px;
+  }
+  .mini-kalender-kopf button {
+    background: none; border: none; cursor: pointer; font-size: 14px; color: var(--muted);
+    width: 22px; height: 22px;
+  }
+  .mini-kalender-wochentage, .mini-kalender-tage {
+    /* 5 statt 7 Spalten: Sa/So werden komplett nicht mehr angezeigt (Praxis hat am
+       Wochenende nie geöffnet, siehe "Wochenende komplett entfernt" weiter unten) */
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
+  }
+  .mini-kalender-wochentage span {
+    font-size: 10px; color: var(--muted); text-align: center; padding-bottom: 4px;
+  }
+  .mini-kalender-tage button {
+    border: none; background: none; cursor: pointer; font-size: 12px;
+    aspect-ratio: 1; border-radius: 50%; color: var(--text);
+    transition: background 0.12s, color 0.12s, transform 0.12s;
+  }
+  .mini-kalender-tage button:hover { background: #F3F2FF; transform: scale(1.06); }
+  .mini-kalender-tage button.andere-monat { color: #D1D5DB; }
+  .mini-kalender-tage button.heute { font-weight: 700; color: var(--violett); }
+  .mini-kalender-tage button.ausgewaehlt {
+    background: linear-gradient(90deg, var(--blau), var(--pink)); color: white;
+    box-shadow: 0 4px 10px rgba(147,51,234,0.25);
+  }
+  .mini-kalender-tage span.platzhalter {}
+
+  .oz-zeile {
+    display: grid; grid-template-columns: 34px 1fr 1fr; gap: 6px; align-items: center;
+    margin-bottom: 6px; font-size: 12px;
+  }
+  .oz-zeile label { color: var(--muted); }
+  .oz-zeile input {
+    padding: 5px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; width: 100%;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .datum-leiste {
+    display: flex;
+    align-items: center;
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: var(--schatten-sm);
+    padding: 6px;
+    gap: 2px;
+    position: relative;
+  }
+  .mini-kalender-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: var(--schatten-lg);
+    padding: 14px;
+    width: 260px;
+    z-index: 150;
+    animation: modal-einblenden 0.15s ease;
+  }
+  .datum-leiste button.pfeil {
+    background: none;
+    border: none;
+    border-radius: 10px;
+    width: 32px; height: 32px;
+    cursor: pointer;
+    font-size: 15px;
+    color: var(--muted);
+    transition: background 0.15s;
+  }
+  .datum-leiste button.pfeil:hover { background: #F3F2F7; }
+  #aktuelles-datum {
+    font-size: 15px; font-weight: 600; text-align: center; padding: 0 4px;
+    width: 268px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    cursor: pointer; border-radius: 8px; transition: background 0.15s;
+  }
+  #aktuelles-datum:hover { background: #F3F2F7; }
+  /* Feste Breite statt min-width: unterschiedlich lange Wochentag-/Monatsnamen
+     (z.B. "Montag" vs. "Donnerstag", "Mai" vs. "September") dürfen die Box nicht
+     mehr aufziehen/schrumpfen lassen – sonst "springt" bei jedem Tageswechsel
+     alles rechts daneben (Heute-Button, Filter, Tag/Woche, Drucken, Abmelden)
+     um ein paar Pixel mit. 268px deckt auch die längste Kombination
+     ("Donnerstag, 30. September 2026") mit Luft nach oben ab. */
+  .datum-trenner { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+  #heute-btn {
+    background: none;
+    border: none;
+    border-radius: 10px;
+    padding: 0 14px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--violett);
+    transition: background 0.15s;
+  }
+  #heute-btn:hover { background: #F3F2F7; }
+  #logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    font-family: inherit;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #logout-btn:hover { background: var(--card); border-color: #D1D5DB; }
+
+  .filter-pille {
+    display: flex;
+    align-items: center;
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: var(--schatten-sm);
+    padding: 6px;
+    gap: 2px;
+  }
+  .filter-btn {
+    background: none;
+    border: none;
+    border-radius: 10px;
+    padding: 0 14px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--muted);
+    transition: background 0.15s, color 0.15s;
+  }
+  .filter-btn:hover { background: #F3F2F7; }
+  .filter-btn.aktiv {
+    background: linear-gradient(90deg, var(--blau), var(--pink));
+    color: white;
+    box-shadow: 0 4px 10px rgba(147,51,234,0.22);
+  }
+  .header-links { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .tag-ansicht { display: grid; grid-template-columns: 46px 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 640px) {
+    .tag-ansicht { grid-template-columns: 1fr; }
+    .zeitachse { display: none; }
+  }
+
+  .zeitachse { position: relative; margin-top: 50px; }
+  .zeitachse .stunde-label {
+    position: absolute;
+    right: 6px;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .spalte {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--schatten-sm);
+    transition: box-shadow 0.2s ease;
+  }
+  .spalte:hover { box-shadow: var(--schatten-md); }
+  .spalte h2 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .spalte h2 .add-btn {
+    background: linear-gradient(90deg, var(--blau), var(--pink));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    width: 26px; height: 26px;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .spalte h2 .add-btn:hover { opacity: 0.9; }
+  .spalte h2 .add-btn:active { transform: scale(0.93); }
+  @keyframes ansicht-einblenden { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  .leer-hinweis {
+    position: absolute;
+    top: 50%; left: 0; right: 0;
+    transform: translateY(-50%);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .zeitraster {
+    position: relative;
+    border-radius: 12px;
+    background-color: #FBFBFC;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      var(--border) 0, var(--border) 1px,
+      transparent 1px, transparent 72px
+    );
+    display: flex;
+  }
+  /* Jede Therapeuten-Spalte ist intern in zwei Lanes aufgeteilt: links die normalen Termine,
+     rechts (schmaler) Fango/Massage – läuft parallel zum Therapeuten, kein eigener Konflikt
+     mit der normalen Lane (siehe terminNutztEigeneSpalte in JS). */
+  .lane { position: relative; height: 100%; min-width: 0; }
+  .lane-normal { flex: 1 1 auto; }
+  #raster-lukas-normal, #raster-andy-normal { cursor: copy; }
+  .lane-fango { flex: 0 0 36%; border-left: 1px dashed var(--border); transition: flex-basis 0.15s ease; }
+  .lane-fango .termin-block { font-size: 12px; padding: 3px 7px; }
+  .lane-fango .termin-block .meta { font-size: 11px; }
+  /* An den meisten Tagen gibt es keine Fango/Massage-Termine – dann bekommt die normale Lane
+     die volle Spaltenbreite zurück, statt dauerhaft ein Drittel ungenutzt zu lassen. */
+  .lane-fango.leer { flex: 0 0 0; border-left: none; }
+
+  .termin-block {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    --termin-farbe: var(--violett);
+    border-left: 5px solid var(--termin-farbe);
+    background: color-mix(in srgb, var(--termin-farbe) 14%, white);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: grab;
+    overflow: visible; /* Zeit/Kürzel/Name sollen bei Platzmangel umbrechen (siehe .zeile-haupt)
+                           und bei Bedarf sichtbar über den Block hinausragen, statt abgeschnitten
+                           zu werden – Lesbarkeit geht vor exakter optischer/Raster-Begrenzung. */
+    z-index: 1;
+    transition: box-shadow 0.15s, background 0.15s, filter 0.15s;
+    user-select: none;
+    /* Dünne, nach innen gesetzte Trennlinie am oberen Blockrand (seit 2026-10-27, zehnter
+       Durchgang): bei direkt aufeinanderfolgenden Terminen in derselben Lane (kein Zeitabstand
+       dazwischen, oft sogar dieselbe Heilmittel-Farbe) sorgt sie dafür, dass die Blöcke trotzdem
+       "Schlag auf Schlag" klar auseinanderhaltbar bleiben, ohne eine optische Lücke einzuführen
+       (box-shadow nimmt keinen Platz im Layout ein, verändert also nicht die exakte
+       Zeitraster-Höhe). Wirkt bei einzeln stehenden Blöcken unauffällig am oberen Rand mit.
+       Status-Varianten unten kombinieren diesen Schatten mit ihrem eigenen seitlichen Akzent in
+       derselben box-shadow-Deklaration, da eine neue box-shadow-Regel die vorherige sonst
+       komplett ersetzt statt zu ergänzen. */
+    box-shadow: inset 0 2px 0 0 rgba(31,41,55,0.12);
+  }
+  .termin-block:hover {
+    background: color-mix(in srgb, var(--termin-farbe) 24%, white);
+    box-shadow: var(--schatten-md);
+    z-index: 6;
+  }
+  /* Sehr kurze Termine: Block bleibt klein (Zeitraster bleibt exakt), Inhalt darf darüber
+     hinausragen (gewollt, siehe oben). Eigener Basis-z-index, damit ein kompakter Block im
+     Ruhezustand schon leicht über unveränderten Blöcken liegt. */
+  .termin-block.kompakt { z-index: 3; }
+  /* Ziehbarer Griff am unteren Blockrand, um die Dauer per Drag zu verändern */
+  .termin-block .resize-griff {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize;
+    z-index: 2;
+  }
+  .termin-block .resize-griff:hover, .termin-block.resizing .resize-griff { background: rgba(0,0,0,0.08); }
+  /* 1-Klick-Löschen direkt am Termin-Block, ohne das Bearbeiten-Modal öffnen zu müssen */
+  .termin-block .block-loesch-btn {
+    position: absolute; top: 3px; right: 3px; z-index: 4;
+    width: 20px; height: 20px; border-radius: 6px; border: none;
+    background: rgba(255,255,255,0.0); color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; opacity: 0; transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+  }
+  .termin-block:hover .block-loesch-btn { opacity: 0.85; background: rgba(255,255,255,0.75); }
+  .termin-block .block-loesch-btn:hover { opacity: 1; background: #FEE2E2; color: #DC2626; }
+  .termin-block .block-loesch-btn svg { width: 13px; height: 13px; }
+  /* Terminstatus: erschienen/abgesagt/nicht erschienen – überlagert die Behandlungsfarbe optisch leicht */
+  .termin-block.status-abgesagt { opacity: 0.5; text-decoration: line-through; }
+  .termin-block.status-nicht_erschienen { box-shadow: inset 3px 0 0 #DC2626, inset 0 2px 0 0 rgba(31,41,55,0.12); }
+  .termin-block.status-erschienen { box-shadow: inset 3px 0 0 #16A34A, inset 0 2px 0 0 rgba(31,41,55,0.12); }
+  .status-icon { margin-left: 3px; }
+  .status-wahl { display: flex; gap: 6px; margin-top: 6px; }
+  .status-wahl button {
+    flex: 1; border: 1px solid var(--border); background: white; border-radius: 8px;
+    padding: 7px 4px; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--muted);
+    font-family: inherit; transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .status-wahl button:hover { background: #F7F7F9; }
+  .status-wahl button.aktiv.geplant { background: #EEF0FD; border-color: var(--blau); color: var(--blau); }
+  .status-wahl button.aktiv.erschienen { background: #DCFCE7; border-color: #16A34A; color: #166534; }
+  .status-wahl button.aktiv.abgesagt { background: #F3F4F6; border-color: #9CA3AF; color: #4B5563; }
+  .status-wahl button.aktiv.nicht_erschienen { background: #FEE2E2; border-color: #DC2626; color: #991B1B; }
+  .termin-block.dragging {
+    cursor: grabbing;
+    opacity: 0.92;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.2);
+    z-index: 10;
+    transition: none;
+  }
+  .termin-block .meta {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Haupt-Zeile Zeit · Kürzel · Name – immer groß & deutlich markiert, unabhängig von der
+     Blockgröße/Dauer des Termins (auch bei sehr kurzen Terminen gut lesbar). Alle drei Teile
+     müssen immer vollständig sichtbar sein: reicht die Breite nicht (v.a. schmale Fango/
+     Massage-Lane), bricht die Zeile um, statt per Ellipsis abgeschnitten zu werden – der Block
+     darf dafür höher werden (siehe overflow:visible oben bzw. .kompakt unten). Horizontal bleibt
+     alles trotzdem innerhalb der Blockbreite (kein erneutes "Unreinheiten"-Problem), weil lange
+     Wörter nötigenfalls selbst umbrechen (overflow-wrap). */
+  .termin-block .zeile-haupt {
+    display: flex; align-items: baseline; gap: 3px 6px; flex-wrap: wrap;
+    /* --block-schrift wird per JS (schrumpfeBlockSchrift) reduziert, wenn der Block sonst in
+       den nächsten Termin hineinlaufen würde – siehe dort. */
+    font-size: var(--block-schrift, 14.5px); font-weight: 700; color: var(--text); line-height: 1.3;
+    overflow: hidden; /* Sicherheitsnetz: nichts darf aus dem Block heraus in Nachbar-Termine laufen */
+  }
+  /* Feste Mindestbreiten für Uhrzeit und Kürzel-Badge (seit 2026-10-27, elfter Durchgang): ohne
+     das startete der Patientenname je nach Länge von Uhrzeit/Kürzel ("KG" vs. "KPE 30") an einer
+     unterschiedlichen horizontalen Position – bei direkt untereinanderstehenden Terminen wirkte
+     das uneinheitlich/"ausgefranst". Beide Breiten in `em` (bzw. `ch` bei der Uhrzeit, da reine
+     Ziffern) relativ zur jeweils eigenen, lokal ggf. geschrumpften Schriftgröße angegeben, damit
+     die Ausrichtung auch bei automatisch verkleinerter Schrift (siehe --block-schrift) konsistent
+     bleibt. Längere Kürzel als "KPE 30" wachsen weiterhin über die Mindestbreite hinaus, statt
+     abgeschnitten zu werden. */
+  .termin-block .zeile-haupt .zeit { font-weight: 700; color: var(--text); flex-shrink: 0; min-width: 5ch; }
+  .termin-block .zeile-haupt .kuerzel {
+    font-weight: 700; font-size: 0.86em; color: var(--termin-farbe);
+    background: color-mix(in srgb, var(--termin-farbe) 16%, white);
+    border-radius: 5px; padding: 1px 7px; text-align: center; box-sizing: border-box;
+    min-width: 4.6em; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+  }
+  .termin-block .zeile-haupt .name {
+    font-weight: 700; white-space: normal; overflow-wrap: anywhere;
+    flex: 1 1 auto; min-width: 0; max-width: 100%;
+  }
+  .termin-block .zeile-haupt .icon-mini, .termin-block .zeile-haupt .status-icon { flex-shrink: 0; }
+  /* Letzter Ausweg bei extrem kurzen, eng aufeinanderfolgenden Terminen mit langem Namen, bei
+     denen selbst die kleinste Schrift (siehe schrumpfeBlockSchriftInLane) nicht mehr ausreicht:
+     Kürzel/Name werden einzeilig mit "…" abgeschnitten, damit der Block garantiert nicht mehr in
+     den nächsten Termin hineinläuft. Vollständiger Name bleibt über Hover/Klick abrufbar. */
+  .termin-block.einzeiler .zeile-haupt { flex-wrap: nowrap; }
+  .termin-block.einzeiler .zeile-haupt .kuerzel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70px; flex-shrink: 0; }
+  .termin-block.einzeiler .zeile-haupt .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .termin-block.kompakt {
+    display: flex;
+    align-items: flex-start; /* statt center: zusätzliche umgebrochene Zeilen wachsen nach
+                                 unten (wie von Lukas gewünscht), nicht gleichmäßig nach oben
+                                 UND unten über den Zeitslot hinaus */
+    padding: 3px 10px;
+  }
+  /* .zeile-haupt ist hier selbst ein Flex-Item (weil .kompakt display:flex ist) – ohne
+     min-width:0 würde es nie unter seine Inhaltsbreite schrumpfen und der Umbruch innen würde
+     nie greifen, der Block liefe stattdessen horizontal in Nachbar-Termine hinein. */
+  .termin-block.kompakt .zeile-haupt { flex: 1 1 auto; min-width: 0; }
+
+  .tooltip {
+    position: fixed;
+    z-index: 100;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--schatten-lg);
+    padding: 16px 18px;
+    font-size: 14px;
+    width: 300px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+    transition: opacity 0.14s ease, transform 0.14s ease;
+  }
+  .tooltip.sichtbar { opacity: 1; transform: translateY(0) scale(1); }
+  .tooltip .zeit { font-weight: 700; font-size: 16.5px; }
+  .tooltip .meta { color: var(--muted); font-size: 14px; margin-top: 5px; line-height: 1.4; }
+  .tooltip .meta b { color: var(--text); }
+  .tooltip .notiz-box {
+    margin-top: 10px; padding: 9px 11px; background: #F7F7F9; border: 1px solid var(--border);
+    border-radius: 9px; font-size: 13.5px; color: var(--text); line-height: 1.45; white-space: pre-wrap;
+  }
+  .tooltip .notiz-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .termin-block .meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  /* Ruhezustand: nur Zeit/Heilmittel/Name (Haupt-Zeile) sichtbar, die Meta-Zeile (Raum,
+     Behandlungstyp, Dauer) bleibt verborgen – hält die Kalenderübersicht ruhiger. Erscheint NICHT
+     mehr beim Hovern (seit 2026-10-27, zwölfter Durchgang, auf Lukas' Wunsch entfernt): dieselben
+     Infos stehen beim Hover ohnehin schon im großen Hover-Tooltip daneben, die doppelte kleine
+     Schrift im Block selbst war daher überflüssig. Bleibt weiterhin sichtbar, solange der Termin
+     zum Bearbeiten ausgewählt ist (.ausgewaehlt) – dort wird i.d.R. nicht gleichzeitig gehovert,
+     der Tooltip ist dann nicht automatisch sichtbar. */
+  .termin-block .meta { display: none; }
+  .termin-block.ausgewaehlt .meta { display: block; }
+
+  /* Modal */
+  #modal-overlay, #patient-modal-overlay, #verordnung-modal-overlay, #warteliste-modal-overlay, #vorschau-modal-overlay, #patientensuche-overlay, #terminsuche-overlay {
+    position: fixed; inset: 0;
+    background: rgba(17,17,30,0.42);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+    z-index: 200;
+    animation: overlay-einblenden 0.15s ease;
+  }
+  @keyframes overlay-einblenden { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes modal-einblenden {
+    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Notiz-Fenster (seit 2026-10-27, zwölfter Durchgang): schnelle Gedankenstütze ohne jede
+     Speicherung – Inhalt lebt nur im Textarea-DOM und ist nach Neuladen oder Schließen weg.
+     Bewusst frei auf dem Bildschirm verschiebbar (siehe JS unten) statt als zentriertes Modal.
+     Seit dem dreizehnten Durchgang startet sie über einen eigenen Eck-Knopf (.notiz-ecke-btn)
+     statt im icon-rail. z-index bewusst HÖHER als alle Modal-Overlays (200) gesetzt: öffnet man
+     bei offener Notiz z.B. "Neuer Termin", soll die Notiz über dem Blur-Hintergrund des Modals
+     liegen – unverschwommen lesbar und weiterhin bedienbar, damit man z.B. einen dort notierten
+     Namen/eine Uhrzeit direkt beim Anlegen des Termins ablesen kann. */
+  .notiz-fenster {
+    position: fixed;
+    width: 280px;
+    min-height: 170px;
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--schatten-lg), 0 0 0 1px var(--border);
+    z-index: 260;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .notiz-fenster.hidden { display: none; }
+  .notiz-kopf {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 6px 8px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    cursor: grab;
+    user-select: none;
+  }
+  .notiz-kopf:active { cursor: grabbing; }
+  .notiz-titel { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+  .notiz-schliessen {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 18px; line-height: 1; padding: 2px 8px; border-radius: 6px;
+  }
+  .notiz-schliessen:hover { color: var(--text); background: var(--border); }
+  .notiz-text {
+    flex: 1; border: none; resize: none; padding: 12px;
+    font-family: inherit; font-size: 13.5px; line-height: 1.5;
+    background: transparent; color: var(--text);
+  }
+  .notiz-text:focus { outline: none; }
+  .termin-block.ausgewaehlt {
+    box-shadow: 0 0 0 2px var(--violett), 0 4px 14px rgba(0,0,0,0.12);
+  }
+  .zeit-indikator {
+    position: fixed;
+    transform: translateY(-50%);
+    background: linear-gradient(90deg, var(--blau), var(--pink));
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    z-index: 60;
+  }
+  .zeit-indikator.sichtbar { opacity: 1; }
+  /* Lineal mit 5-Minuten-Strichen, erscheint rechts neben dem Termin-Block während des
+     Dauer-Ziehens (Resize), damit man die neue Dauer besser abschätzen kann. */
+  .resize-lineal {
+    position: fixed;
+    width: 9px;
+    pointer-events: none;
+    z-index: 55;
+  }
+  .resize-lineal .tick {
+    position: absolute;
+    left: 0;
+    width: 5px;
+    height: 1px;
+    background: var(--border);
+  }
+  .resize-lineal .tick.gross { width: 9px; background: var(--muted); }
+  .resize-dauer-indikator {
+    position: fixed;
+    transform: translateY(-50%);
+    background: linear-gradient(90deg, var(--blau), var(--pink));
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 60;
+  }
+  #modal, #patient-modal, #verordnung-modal, #warteliste-modal, #vorschau-modal {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 26px;
+    width: 340px;
+    max-width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
+    box-shadow: var(--schatten-lg);
+    animation: modal-einblenden 0.18s cubic-bezier(.2,.9,.3,1.1);
+  }
+  #modal h3, #patient-modal h3, #verordnung-modal h3, #warteliste-modal h3, #vorschau-modal h3 { margin-top: 0; font-size: 19px; font-weight: 700; }
+  #modal label, #patient-modal label, #verordnung-modal label, #warteliste-modal label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px; font-weight: 500; }
+  #modal input, #modal select, #modal textarea,
+  #patient-modal input, #patient-modal select, #patient-modal textarea,
+  #verordnung-modal input, #verordnung-modal select, #verordnung-modal textarea,
+  #warteliste-modal input, #warteliste-modal select, #warteliste-modal textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  #modal input:focus, #modal select:focus, #modal textarea:focus,
+  #patient-modal input:focus, #patient-modal select:focus, #patient-modal textarea:focus,
+  #verordnung-modal input:focus, #verordnung-modal select:focus, #verordnung-modal textarea:focus,
+  #warteliste-modal input:focus, #warteliste-modal select:focus, #warteliste-modal textarea:focus {
+    border-color: var(--violett);
+    box-shadow: 0 0 0 3px rgba(147,51,234,0.12);
+    outline: none;
+  }
+  #modal textarea, #patient-modal textarea, #verordnung-modal textarea, #warteliste-modal textarea { resize: vertical; min-height: 54px; }
+  #patient-modal-error, #verordnung-modal-error, #warteliste-modal-error { color: #DC2626; font-size: 12px; margin-top: 8px; min-height: 14px; }
+
+  .patient-suche-wrapper { position: relative; }
+  .patient-vorschlaege {
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: var(--schatten-md); max-height: 180px; overflow-y: auto; z-index: 20;
+  }
+  .patient-vorschlag {
+    padding: 8px 12px; font-size: 13px; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .patient-vorschlag:hover { background: #F3F2FF; }
+  .patient-vorschlag .vorschlag-info { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .ansicht-kopf-rechts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .modal-buttons { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-buttons button { flex: 1; padding: 11px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; font-family: inherit; font-size: 15px; transition: background 0.15s, opacity 0.15s, transform 0.1s; }
+  .modal-buttons button:hover { background: #F7F7F9; }
+  .modal-buttons button:active { transform: scale(0.98); }
+  .modal-buttons .save-btn { border: none; background: linear-gradient(90deg, var(--blau), var(--pink)); color: white; font-weight: 600; }
+  .modal-buttons .save-btn:hover { background: linear-gradient(90deg, var(--blau), var(--pink)); opacity: 0.92; }
+  .modal-buttons .delete-btn { border: 1px solid #FCA5A5; color: #DC2626; background: white; flex: 0 0 auto; width: 44px; }
+  .modal-buttons .delete-btn:hover { background: #FEF2F2; }
+  #modal-error { color: #DC2626; font-size: 12px; margin-top: 8px; min-height: 14px; }
+  #modal-konflikt-hinweis {
+    display: none;
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    color: #92400E;
+    font-size: 12px;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-top: 10px;
+  }
+  #modal-konflikt-hinweis.sichtbar { display: block; }
+  .wiederholung-box { border-top: 1px dashed var(--border); margin-top: 14px; padding-top: 12px; }
+  .wiederholung-box .reihe { display: grid; grid-template-columns: 1fr 70px; gap: 8px; }
+  .serie-hinweis {
+    background: #F3F2FF;
+    color: var(--violett);
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .termin-block .serie-icon { opacity: 0.65; margin-left: 3px; }
+
+  /* ---- Patienten / Statistik / Woche ---- */
+  .ansicht-kopf {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    margin-bottom: 16px;
+  }
+  .ansicht-kopf h2 { margin: 0; font-size: 18px; font-weight: 700; }
+  .suchfeld {
+    width: 100%;
+    max-width: 320px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--card);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .suchfeld:focus { border-color: var(--violett); box-shadow: 0 0 0 3px rgba(147,51,234,0.12); outline: none; }
+
+  /* Patienten-Ansicht: strukturierter Kopf (seit 2026-10-27, dreizehnter Durchgang) */
+  .patienten-kopf-neu { margin-bottom: 20px; }
+  .patienten-ueberschrift { margin: 0 0 14px; font-size: 26px; font-weight: 800; text-align: center; }
+  .patienten-kopf-neu > .primary-btn { width: 100%; max-width: 420px; margin: 0 auto 10px; display: block; padding: 12px; font-size: 14px; }
+  .patienten-such-zeile { display: flex; gap: 8px; max-width: 420px; margin: 0 auto; }
+  .patienten-such-zeile .suchfeld { max-width: none; flex: 1; }
+  .patienten-suche-lupe-btn {
+    display: flex; align-items: center; gap: 6px; white-space: nowrap;
+    padding: 0 14px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 13px; font-family: inherit;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .patienten-suche-lupe-btn:hover { background: #F3F2FF; }
+
+
+  .patienten-akkordeon { display: flex; flex-direction: column; gap: 14px; }
+  .patienten-sektion {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--schatten-sm);
+    padding: 4px 18px 6px;
+  }
+  .patienten-sektion summary {
+    list-style: none; cursor: pointer; padding: 14px 0; font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; gap: 8px; color: var(--text);
+  }
+  .patienten-sektion summary::-webkit-details-marker { display: none; }
+  .patienten-sektion summary::before {
+    content: ''; width: 9px; height: 9px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+    transform: rotate(-45deg); margin-right: 2px; transition: transform 0.15s ease;
+  }
+  .patienten-sektion[open] summary::before { transform: rotate(45deg); }
+  .patienten-sektion-anzahl { font-size: 12px; font-weight: 600; color: var(--muted); background: #F3F2F7; border-radius: 20px; padding: 2px 9px; }
+  .patienten-sektion-hinweis { margin: -4px 0 10px; font-size: 12px; color: var(--muted); }
+  /* Feste Höhe mit internem Scroll statt variabler Höhe (seit 2026-10-27, vierzehnter Durchgang):
+     vorher ist die Box bei jeder Tastatureingabe im Filterfeld (oder je nach Anzahl Patienten pro
+     Akkordeon) abrupt gewachsen/geschrumpft und hat den ganzen Rest der Seite mitgerissen – wirkte
+     unruhig/"nicht smooth". Jetzt bleibt die Box immer gleich groß, nur ihr Inhalt scrollt. */
+  .patienten-liste {
+    background: var(--bg); border-radius: 12px; margin-bottom: 10px;
+    height: 300px; overflow-y: auto; overflow-x: hidden;
+  }
+  .patient-zeile.kopf { position: sticky; top: 0; z-index: 1; }
+  .patient-zeile {
+    display: grid;
+    grid-template-columns: 1fr 100px 140px 120px 70px;
+    gap: 10px;
+    align-items: center;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+  }
+  .patient-zeile:last-child { border-bottom: none; }
+  .patient-zeile.kopf { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; background: #FAFAFB; }
+  .patient-name { font-weight: 600; }
+  .patient-aktionen { display: flex; gap: 4px; justify-content: flex-end; }
+  .patient-aktionen button { background: none; border: none; cursor: pointer; padding: 5px; border-radius: 7px; color: var(--muted); display: flex; align-items: center; }
+  .patient-aktionen button svg { width: 15px; height: 15px; }
+  .patient-aktionen button:hover { background: #F3F2F7; color: var(--text); }
+  .patient-aktionen button.loeschen:hover { background: #FEF2F2; color: #DC2626; }
+  @media (max-width: 640px) {
+    .patient-zeile { grid-template-columns: 1fr 70px 60px; }
+    .patient-zeile > span:nth-child(3), .patient-zeile > span:nth-child(4) { display: none; }
+  }
+  .status-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+  .status-badge.heute { background: #DCFCE7; color: #166534; }
+  .status-badge.aktiv { background: #EEF0FD; color: var(--blau); }
+  .status-badge.inaktiv { background: #F3F4F6; color: var(--muted); }
+  .status-badge.neu { background: #EDE9FE; color: var(--violett); }
+  .leer-zustand { text-align: center; color: var(--muted); font-size: 13px; padding: 30px; }
+
+  .zeitraum-pille { display: flex; gap: 2px; background: var(--card); border-radius: 14px; box-shadow: var(--schatten-sm); padding: 6px; width: fit-content; margin-bottom: 18px; }
+
+  .statistik-karte { background: var(--card); border-radius: var(--radius); box-shadow: var(--schatten-sm); padding: 20px; max-width: 560px; }
+  .statistik-zeile { margin-bottom: 16px; }
+  .statistik-zeile:last-child { margin-bottom: 0; }
+  .statistik-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .statistik-label b { font-weight: 700; }
+  .statistik-track { background: #F3F4F6; border-radius: 20px; height: 10px; overflow: hidden; }
+  .statistik-balken { height: 100%; border-radius: 20px; background: linear-gradient(90deg, var(--blau), var(--violett), var(--pink)); transition: width 0.4s ease; }
+
+  .woche-umschalter { display: flex; gap: 2px; background: var(--card); border-radius: 14px; box-shadow: var(--schatten-sm); padding: 6px; }
+  /* Wochenansicht: Hover-Akkordeon mit 7 Spalten nebeneinander. Im Ruhezustand (keine Spalte
+     gehovert/angepinnt) sind alle 7 Tage gleich breit und zeigen ihren vollen Tagesplan. Sobald
+     man mit der Maus über eine Spalte fährt, wächst NUR diese auf den Großteil der Breite, die
+     anderen 6 schrumpfen auf einen schmalen Streifen (Wochentag + Datum + Terminanzahl). Bewegt
+     man die Maus auf einen der schmalen Streifen, wird DER zur großen Spalte, die vorherige
+     minimiert sich wieder – rein über CSS :hover gelöst (kein Re-Render nötig). Die ".aktiv"/
+     ".akkordeon-aktiv"-Klassen spiegeln denselben Zustand per Klick, damit es auch auf
+     Touch-Geräten ohne echtes Hover funktioniert. */
+  .woche-grid { display: flex; gap: 8px; align-items: stretch; height: calc(100vh - 230px); min-height: 420px; }
+  @media (max-width: 960px) { .woche-grid { height: auto; flex-wrap: wrap; } .woche-tag-spalte { flex-basis: 150px !important; min-height: 160px; } }
+  .woche-tag-spalte {
+    flex: 1 1 0; min-width: 0; background: var(--card); border-radius: 14px; box-shadow: var(--schatten-sm);
+    overflow: hidden; transition: flex 0.25s ease; cursor: pointer; display: flex; flex-direction: column;
+  }
+  .woche-tag-spalte.heute { box-shadow: 0 0 0 2px var(--violett), var(--schatten-sm); }
+  .woche-grid:hover .woche-tag-spalte { flex: 0 0 64px; }
+  .woche-grid:hover .woche-tag-spalte:hover { flex: 6 1 0; }
+  .woche-grid.akkordeon-aktiv .woche-tag-spalte:not(.aktiv) { flex: 0 0 64px; }
+  .woche-grid.akkordeon-aktiv .woche-tag-spalte.aktiv { flex: 6 1 0; }
+
+  .woche-tag-voll { padding: 10px; overflow-y: auto; overflow-x: hidden; flex: 1; display: flex; flex-direction: column; min-width: 220px; }
+  .woche-grid:hover .woche-tag-spalte:not(:hover) .woche-tag-voll,
+  .woche-grid.akkordeon-aktiv .woche-tag-spalte:not(.aktiv) .woche-tag-voll { display: none; }
+  .woche-tag-kopf { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; white-space: nowrap; }
+  .woche-tag-kopf .tag-zahl { color: var(--muted); font-weight: 500; }
+  /* Pro Tag in Andy/Lukas aufgeteilt (seit 2026-10-27, neunter Durchgang), analog zur
+     Spaltenreihenfolge überall sonst: Andy links, Lukas rechts. Nur wenn der Filter "Beide"
+     aktiv ist – bei "nur Andy"/"nur Lukas" bleibt es bei der einfachen flachen Liste, da die
+     zweite Spalte dann ohnehin leer wäre. */
+  .woche-tag-spalten-split { display: flex; gap: 10px; flex: 1; min-height: 0; }
+  .woche-tag-therapeut-spalte { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; }
+  .woche-tag-therapeut-label {
+    font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.03em; margin-bottom: 5px;
+  }
+  .woche-termin {
+    display: flex; align-items: baseline; gap: 5px;
+    font-size: 11px; padding: 4px 6px; border-radius: 6px; margin-bottom: 4px;
+    border-left: 3px solid var(--violett); background: #F6F5FF; cursor: pointer;
+  }
+  .woche-termin .zeit { font-weight: 700; flex-shrink: 0; }
+  /* Heilmittel-Kürzel in der Wochenansicht-Zeile (seit 2026-10-27, zwölfter Durchgang, im
+     dreizehnten Durchgang korrigiert): soll NUR in der großen (gehoverten/gepinnten) Spalte
+     sichtbar sein, da dort genug Breite übrig ist – im Ruhezustand (alle Spalten gleich breit)
+     bleibt es wie vorher nur Uhrzeit + Name, das Kürzel steht dort weiterhin im nativen
+     Hover-Titel (title-Attribut). Standardmäßig versteckt, nur innerhalb der aktiven/gehoverten
+     großen Spalte eingeblendet. */
+  .woche-termin .kuerzel { display: none; flex-shrink: 0; color: var(--muted); font-weight: 600; }
+  .woche-grid:hover .woche-tag-spalte:hover .woche-termin .kuerzel,
+  .woche-grid.akkordeon-aktiv .woche-tag-spalte.aktiv .woche-termin .kuerzel { display: inline; }
+  /* `min-width: 0` ist hier zwingend nötig (klassische Flexbox-Falle): ohne das verhindert der
+     Browser-Default `min-width: auto` bei Flex-Items das Schrumpfen unter die Inhaltsbreite, der
+     Name lief dadurch (seit Hinzufügen des Kürzels) bei längeren Namen über die Spaltenbreite
+     hinaus und erzeugte einen horizontalen Scrollbalken am unteren Rand der Spalte. */
+  .woche-termin .wer { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .woche-leer { font-size: 11px; color: var(--muted); }
+
+  .woche-tag-mini {
+    display: none; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+    flex: 1; padding: 10px 4px;
+  }
+  .woche-grid:hover .woche-tag-spalte:not(:hover) .woche-tag-mini,
+  .woche-grid.akkordeon-aktiv .woche-tag-spalte:not(.aktiv) .woche-tag-mini { display: flex; }
+  .woche-tag-mini .mini-wochentag { font-size: 12px; font-weight: 700; }
+  .woche-tag-mini .mini-datum { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .woche-tag-mini .mini-anzahl {
+    min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
+    background: linear-gradient(90deg, var(--blau), var(--pink));
+    color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+
+  .protokoll-liste { max-height: 260px; overflow-y: auto; }
+  .checkup-box .checkup-intro { font-size: 12px; color: var(--muted); margin: 0 0 14px; }
+  .checkup-box h4 {
+    font-size: 12px; font-weight: 700; color: var(--text); margin: 16px 0 6px;
+    text-transform: uppercase; letter-spacing: 0.02em;
+  }
+  .checkup-box h4:first-of-type { margin-top: 0; }
+  .checkup-box ul { margin: 0; padding-left: 18px; }
+  .checkup-box li { font-size: 12.5px; line-height: 1.5; margin-bottom: 6px; color: var(--text); }
+  .checkup-box li:last-child { margin-bottom: 0; }
+  .protokoll-zeile {
+    display: grid; grid-template-columns: 84px 1fr 120px; gap: 8px;
+    padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; align-items: center;
+  }
+  .protokoll-zeile:last-child { border-bottom: none; }
+  .protokoll-zeile .zeitpunkt { color: var(--muted); white-space: nowrap; font-size: 11px; }
+  .protokoll-zeile .wer { font-weight: 600; white-space: nowrap; text-align: right; font-size: 11px; color: var(--muted); }
+  @media (max-width: 640px) {
+    .protokoll-zeile { grid-template-columns: 1fr; gap: 2px; }
+    .protokoll-zeile .wer { text-align: left; }
+  }
+  .heilmittel-kopfzeile, .heilmittel-zeile {
+    display: grid;
+    grid-template-columns: 18px 1fr 80px 64px 44px 70px 32px;
+    gap: 8px;
+    align-items: start;
+    margin-bottom: 12px;
+  }
+  .heilmittel-kopfzeile { align-items: center; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
+  .heilmittel-zeile > input, .heilmittel-zeile > .farbe-schwatch, .heilmittel-zeile > .heilmittel-aktiv-label, .heilmittel-zeile > .heilmittel-loesch-btn { margin-top: 1px; }
+  @media (max-width: 640px) {
+    .heilmittel-kopfzeile, .heilmittel-zeile { grid-template-columns: 18px 1fr 1fr; }
+    .heilmittel-kopfzeile { display: none; }
+  }
+  /* Drag-Griff zum Neuanordnen der Heilmittel-Liste (bestimmt die Reihenfolge im Dropdown) */
+  .heilmittel-drag-griff {
+    display: flex; align-items: center; justify-content: center;
+    width: 18px; height: 28px; margin-top: 1px; color: var(--muted); cursor: grab; touch-action: none;
+  }
+  .heilmittel-drag-griff:active { cursor: grabbing; }
+  .heilmittel-drag-griff svg { width: 13px; height: 13px; }
+  .heilmittel-zeile.dragging { opacity: 0.4; }
+  .heilmittel-zeile.drop-vor { outline: 2px dashed var(--violett); outline-offset: -2px; border-radius: 8px; }
+  .heilmittel-zeile input[type="text"], .heilmittel-zeile input[type="number"] {
+    padding: 6px 7px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; width: 100%;
+    font-family: inherit;
+  }
+  .heilmittel-name-zelle { display: flex; flex-direction: column; gap: 5px; }
+  .farbe-schwatch {
+    width: 27px; height: 27px; border-radius: 50%; cursor: pointer;
+    border: 2px solid var(--border); background: var(--termin-farbe, var(--violett)); padding: 0;
+    transition: border-color 0.15s, transform 0.1s;
+  }
+  .farbe-schwatch:hover { border-color: var(--text); transform: scale(1.06); }
+  .farbe-popover {
+    position: fixed; z-index: 200; background: var(--card); border-radius: 14px;
+    box-shadow: var(--schatten-lg); padding: 14px; width: 232px;
+    animation: modal-einblenden 0.15s ease;
+  }
+  .farbe-popover-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin-bottom: 7px; }
+  .farbe-popover-reihe { display: flex; flex-wrap: wrap; gap: 8px; }
+  .farbe-kachel {
+    width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; padding: 0;
+    transition: transform 0.1s;
+  }
+  .farbe-kachel:hover { transform: scale(1.12); }
+  .farbe-kachel.ausgewaehlt { border-color: var(--text); }
+  .kurzhinweis-toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px);
+    background: var(--text); color: white; padding: 10px 18px; border-radius: 10px;
+    font-size: 13.5px; font-weight: 600; box-shadow: var(--schatten-lg); z-index: 300;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease;
+    white-space: nowrap;
+  }
+  .kurzhinweis-toast.sichtbar { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .heilmittel-aktiv-label { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .heilmittel-spalte-label { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+  .heilmittel-loesch-btn {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    width: 28px; height: 28px; cursor: pointer; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .heilmittel-loesch-btn svg { width: 14px; height: 14px; }
+  .heilmittel-loesch-btn:hover { background: #FEF2F2; border-color: #FCA5A5; color: #DC2626; }
+
+  /* ---- Phase 2: erweiterte Serientermine, Verordnungen, Hausbesuche, Warteliste ---- */
+  .wochentage-wahl { margin-top: 8px; }
+  .wochentage-checkboxen { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .wochentage-checkboxen label {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 10px; color: var(--muted); background: #F7F7F9; border-radius: 8px; padding: 5px 7px;
+    cursor: pointer; border: 1px solid transparent; transition: border-color 0.15s, color 0.15s;
+  }
+  .wochentage-checkboxen label:has(input:checked) { border-color: var(--violett); color: var(--violett); background: #F3F2FF; }
+
+  .hausbesuch-checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin: 10px 0 2px; cursor: pointer; }
+
+  /* "+ Mehr Optionen": hält Hausbesuch & Verordnung im Termin-Modal standardmäßig eingeklappt,
+     damit das Formular für den normalen Fall (Raum, Patient, fertig) kurz und übersichtlich bleibt. */
+  .modal-erweitert-link {
+    background: none; border: none; color: var(--violett); font-size: 12px; font-weight: 600;
+    cursor: pointer; padding: 10px 0 0; font-family: inherit; display: block; text-align: left; width: 100%;
+  }
+  .modal-erweitert-link:hover { text-decoration: underline; }
+  .modal-erweitert {
+    border: 1px dashed var(--border); border-radius: 10px; padding: 12px; margin-top: 8px;
+  }
+
+  .verordnung-box { border-top: 1px dashed var(--border); margin-top: 14px; padding-top: 12px; }
+  .verordnung-neu-btn {
+    width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 8px; background: white;
+    cursor: pointer; font-size: 16px; color: var(--violett); font-family: inherit; flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .verordnung-neu-btn:hover { background: #F7F7F9; border-color: #D1D5DB; }
+  .verordnung-hinweis {
+    background: #F3F2FF; color: var(--violett); font-size: 11px; border-radius: 8px;
+    padding: 7px 10px; margin-top: 8px; line-height: 1.5;
+  }
+  .verordnung-hinweis.warnung { background: #FFFBEB; color: #92400E; }
+
+  .verordnung-karte { background: var(--card); border-radius: 14px; box-shadow: var(--schatten-sm); padding: 14px 16px; margin-bottom: 10px; }
+  .verordnung-kopf { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+  .verordnung-kopf > div:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .verordnung-aktionen { display: flex; gap: 6px; flex-shrink: 0; }
+  .verordnung-meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .verordnung-warnung { background: #FFFBEB; color: #92400E; font-size: 11px; border-radius: 8px; padding: 6px 10px; margin-top: 8px; line-height: 1.5; }
+  .verordnung-abschluss-hinweis { margin-top: 8px; }
+  .verordnung-abschluss-hinweis button {
+    border: none; background: linear-gradient(90deg, var(--blau), var(--pink)); color: white;
+    font-weight: 600; font-size: 11px; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-family: inherit;
+  }
+
+  .warteliste-box { margin-bottom: 20px; }
+  .warteliste-zeile {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+    padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 12.5px;
+  }
+  .warteliste-zeile:last-child { border-bottom: none; }
+  .warteliste-notiz { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+  /* Druck-Kopf (Titel + Datum) steht im normalen Layout unsichtbar über dem Tagesraster – nur
+     im @media print-Block unten wird er eingeblendet (siehe druckeTagesplan()). */
+  #druck-kopf { display: none; }
+  .druck-btn {
+    background: none; border: 1px solid var(--border); border-radius: 10px;
+    width: 38px; height: 38px; cursor: pointer; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .druck-btn:hover { background: var(--card); border-color: #D1D5DB; }
+  .druck-btn svg { width: 17px; height: 17px; }
+  .druck-btn.aktiv { background: var(--violett); border-color: var(--violett); color: white; }
+
+  /* ---- Phase 3: Vergleichsansicht, Morgen-Vorschau, Hausbesuch-Ansicht, Lane-Legende ---- */
+  .vergleich-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .vergleich-grid { grid-template-columns: 1fr; } }
+  .vergleich-spalte { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--schatten-sm); }
+  .vergleich-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; position: relative; }
+  .vergleich-kopf h3 { margin: 0; font-size: 14px; font-weight: 700; cursor: default; }
+  .vergleich-kopf h3.waehlbar { cursor: pointer; border-radius: 8px; padding: 2px 6px; margin: -2px -6px; transition: background 0.15s; }
+  .vergleich-kopf h3.waehlbar:hover { background: #F3F2F7; }
+  /* Vergleichsansicht: zeigt pro Tag ein eigenes, kompaktes Zeitraster – genau wie die normale
+     Tagesansicht (gleiche Blöcke, gleiche Lesbarkeits-Stufen), nur schmaler/kürzer skaliert, damit
+     zwei Tage nebeneinander passen. Termine können hier direkt angelegt und bearbeitet werden. */
+  .vergleich-tag { display: flex; gap: 8px; }
+  /* Die Zeitachse braucht denselben unsichtbaren Platzhalter wie die Therapeuten-Köpfe
+     (.vergleich-therapeut-kopf) über sich, sonst startet "07:00" optisch weiter oben als die
+     eigentliche Raster-Zeile 07:00 (die durch den Lukas/Andy-Kopf nach unten verschoben wird) –
+     dadurch lief "07:00" vorher in den Kartenrand/"Dieser Tag"-Kopf hinein und wurde abgeschnitten. */
+  .vergleich-zeitachse-spalte { display: flex; flex-direction: column; flex: 0 0 38px; }
+  .vergleich-zeitachse-spalte .vergleich-therapeut-kopf { visibility: hidden; }
+  .vergleich-zeitachse { position: relative; width: 38px; flex: 1 1 auto; }
+  .vergleich-zeitachse .stunde-label {
+    position: absolute; right: 4px; transform: translateY(-50%);
+    font-size: 11px; color: var(--muted); white-space: nowrap;
+  }
+  .vergleich-therapeut-spalte { flex: 1 1 0; min-width: 0; }
+  .vergleich-therapeut-kopf {
+    font-size: 12px; font-weight: 700; padding: 5px 8px; margin-bottom: 4px;
+    background: #F3F2F7; border-radius: 7px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .add-btn-klein {
+    background: linear-gradient(90deg, var(--blau), var(--pink)); color: white; border: none; border-radius: 6px;
+    width: 20px; height: 20px; cursor: pointer; font-size: 13px; line-height: 1; padding: 0;
+  }
+  .add-btn-klein:hover { opacity: 0.9; }
+  .vergleich-raster {
+    position: relative; border-radius: 10px; background-color: #FBFBFC;
+    background-image: repeating-linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px, transparent 48px);
+    display: flex;
+  }
+  .vergleich-raster .lane-normal { cursor: copy; }
+  .vergleich-raster .termin-block { cursor: grab; }
+  /* Drag&Drop eines Termins von einem Vergleichstag auf den anderen (bzw. frei innerhalb eines
+     Tages): seit 2026-10-27 (neunter Durchgang) KEIN flächiges Lane-Highlight mehr – stattdessen
+     wie in der Tagesansicht der schwebende #zeit-indikator mit der exakten Ziel-Uhrzeit (siehe
+     zeigeVergleichZeitIndikator). */
+  .termin-block.vergleich-dragging { opacity: 0.4; }
+  .vergleich-tag-nav { display: flex; align-items: center; gap: 2px; }
+  .vergleich-tag-nav button {
+    background: none; border: none; border-radius: 7px; width: 22px; height: 22px;
+    cursor: pointer; color: var(--muted); font-size: 13px; line-height: 1;
+  }
+  .vergleich-tag-nav button:hover { background: #F3F2F7; color: var(--text); }
+
+  /* Icons statt Emojis: klar erkennbar, farblich codiert */
+  .icon-mini { width: 13px; height: 13px; vertical-align: -2px; display: inline-block; }
+  .icon-serie { color: var(--violett); }
+  .icon-haus { color: var(--tuerkis); }
+  .icon-erschienen { color: var(--gruen); }
+  .icon-abgesagt { color: #DC2626; }
+  .icon-nicht-erschienen { color: var(--orange); }
+
+  /* Status-Mehrfachauswahl-Modus: statt Status im Bearbeiten-Modal einzeln zu setzen, mehrere
+     Termine direkt im Kalender anklicken (Toggle) und per Sammelaktion auf einen Status setzen. */
+  .status-modus .termin-block { cursor: pointer; }
+  .status-modus .termin-block:hover { box-shadow: 0 0 0 2px rgba(147,51,234,0.35); }
+  .termin-block.status-ausgewaehlt { box-shadow: 0 0 0 2px var(--blau), 0 4px 14px rgba(0,0,0,0.14); }
+  .status-leiste {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: var(--card); border-radius: 14px; box-shadow: var(--schatten-lg);
+    padding: 10px 14px; display: flex; align-items: center; gap: 10px; z-index: 150;
+  }
+  .status-leiste .status-anzahl { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .status-leiste button {
+    border: 1px solid var(--border); background: white; border-radius: 8px; padding: 8px 12px;
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .status-leiste button:hover { background: #F7F7F9; }
+  .status-leiste button.erschienen { color: var(--gruen); border-color: #BBF7D0; }
+  .status-leiste button.abgesagt { color: #DC2626; border-color: #FCA5A5; }
+  .status-leiste button.nicht_erschienen { color: var(--orange); border-color: #FED7AA; }
+  .status-leiste button.zuruecksetzen { color: var(--blau); border-color: #C7D2FE; }
+  .status-leiste button.schliessen { color: var(--muted); }
+
+  .vorschau-liste-zeile {
+    display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: baseline;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 15px; cursor: pointer;
+  }
+  .vorschau-liste-zeile:hover { background: #FAFAFB; }
+  .vorschau-liste-zeile:last-child { border-bottom: none; }
+  .vorschau-liste-zeile .zeit { font-weight: 700; }
+  .vorschau-liste-zeile .meta { color: var(--muted); font-size: 13px; }
+  .vorschau-zusammenfassung { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border); }
+  .vorschau-zusammenfassung h4 { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--violett); text-transform: uppercase; letter-spacing: 0.02em; }
+  .vorschau-heilmittel-zeile { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
+  #vorschau-modal { width: 660px; max-height: 85vh; }
+  .vorschau-spalten { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .vorschau-spalten-titel { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  @media (max-width: 640px) { .vorschau-spalten { grid-template-columns: 1fr; } }
+  .vorschau-tag-nav { display: flex; align-items: center; gap: 8px; }
+  .vorschau-tag-nav button { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--muted); width: 24px; height: 24px; border-radius: 6px; }
+  .vorschau-tag-nav button:hover { background: #F3F2F7; }
+
+  /* Patientensuche (seit 2026-10-27, zwölfter Durchgang) */
+  /* Modal als Flex-Spalte (seit 2026-10-27, vierzehnter Durchgang): vorher lag overflow-y:auto
+     direkt auf dem Modal, wodurch der absolut positionierte Vorschlags-Dropdown unterhalb des
+     Suchfelds am unteren Modalrand abgeschnitten wurde, sobald das Modal durch Suchergebnisse
+     schon fast seine max-height erreicht hatte. Jetzt scrollt NUR der Ergebnis-Bereich unten,
+     Kopf und Suchfeld (samt Dropdown) bleiben außerhalb der Scroll-/Clip-Zone. Zusätzlich breiter
+     und mit größerer Schrift, damit nichts mehr knapp wirkt oder abgeschnitten aussieht. */
+  #patientensuche-modal {
+    background: var(--card); border-radius: 18px; padding: 26px;
+    width: 640px; max-width: 100%; max-height: 85vh;
+    display: flex; flex-direction: column;
+    box-shadow: var(--schatten-lg);
+    animation: modal-einblenden 0.18s cubic-bezier(.2,.9,.3,1.1);
+  }
+  #patientensuche-modal h3 { margin: 0; font-size: 19px; font-weight: 700; }
+  #patientensuche-ergebnis-scroll { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+  #patientensuche-feld {
+    width: 100%; box-sizing: border-box; padding: 12px 14px; margin-bottom: 4px;
+    border: 1px solid var(--border); border-radius: 10px; font-size: 15px; font-family: inherit;
+    background: var(--bg); color: var(--text);
+  }
+  #patientensuche-feld:focus { box-shadow: 0 0 0 3px rgba(147,51,234,0.12); outline: none; }
+  #patientensuche-modal .patient-vorschlaege { max-height: 240px; }
+  #patientensuche-modal .patient-vorschlag { padding: 10px 14px; font-size: 14px; }
+  .modal-schliessen-btn {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 20px; line-height: 1; padding: 2px 8px; border-radius: 6px;
+  }
+  .modal-schliessen-btn:hover { color: var(--text); background: var(--border); }
+  .patientensuche-eintrag {
+    display: grid; grid-template-columns: 90px 70px 1fr 90px; gap: 10px; align-items: center;
+    padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 13px; cursor: pointer;
+  }
+  .patientensuche-eintrag:hover { background: #F7F7FB; }
+  .patientensuche-eintrag:last-child { border-bottom: none; }
+  .patientensuche-eintrag .ps-datum { font-weight: 600; }
+  .patientensuche-eintrag .ps-vergangen { color: var(--muted); }
+  .patientensuche-liste-kopf {
+    display: grid; grid-template-columns: 90px 70px 1fr 90px; gap: 10px;
+    padding: 4px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.02em; border-bottom: 1px solid var(--border); margin-top: 14px;
+  }
+  .patientensuche-zusammenfassung { font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+
+  /* Terminsuche (seit 2026-10-27, dreizehnter Durchgang) */
+  #terminsuche-modal {
+    background: var(--card); border-radius: 18px; padding: 26px;
+    width: 520px; max-width: 100%; max-height: 85vh; overflow-y: auto;
+    box-shadow: var(--schatten-lg);
+    animation: modal-einblenden 0.18s cubic-bezier(.2,.9,.3,1.1);
+  }
+  #terminsuche-modal h3 { margin: 0; font-size: 19px; font-weight: 700; }
+  .terminsuche-hinweis { font-size: 12.5px; color: var(--muted); margin: 10px 0; }
+  .terminsuche-tage-liste { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow-y: auto; }
+  .terminsuche-tag-zeile {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px;
+    cursor: pointer; font-size: 13.5px; transition: background 0.15s, border-color 0.15s;
+  }
+  .terminsuche-tag-zeile:hover { background: #F3F2FF; border-color: var(--violett); }
+  .terminsuche-tag-zeile .tt-wochentag { font-weight: 700; }
+  .terminsuche-tag-zeile .tt-frei { font-size: 11.5px; color: var(--muted); }
+  .terminsuche-zurueck {
+    background: none; border: none; cursor: pointer; color: var(--violett);
+    font-size: 13px; font-weight: 600; padding: 0; margin-bottom: 4px;
+  }
+  /* Terminsuche-Kalender (seit 2026-10-27, vierzehnter Durchgang): nutzt dasselbe 5-Spalten-
+     Mo-Fr-Raster wie der Mini-Kalender oben im Header (.mini-kalender-wochentage/-tage), damit
+     er optisch vertraut wirkt. Grün = an diesem Tag gibt es für das gewählte Heilmittel noch eine
+     freie Zeit bei mind. einem Therapeuten, Rot = komplett ausgebucht (nicht klickbar). Mit
+     #terminsuche-kalender-tage vorangestellt, da sonst die allgemeine Regel
+     ".mini-kalender-tage button.heute" (zwei Klassen) wegen höherer Spezifität gewinnen und die
+     rot/grün-Einfärbung an "heute" überdecken würde. */
+  #terminsuche-kalender-tage button.ts-frei { background: #DCFCE7; color: #166534; }
+  #terminsuche-kalender-tage button.ts-frei:hover { background: #BBF7D0; }
+  #terminsuche-kalender-tage button.ts-belegt { background: #FEE2E2; color: #B91C1C; opacity: 0.8; cursor: not-allowed; }
+  #terminsuche-kalender-tage button.ts-belegt:hover { background: #FEE2E2; transform: none; }
+  #terminsuche-kalender-tage button.ts-vergangen { opacity: 0.3; cursor: default; }
+  #terminsuche-kalender-tage button.ts-vergangen:hover { background: none; transform: none; }
+  .terminsuche-legende { display: flex; gap: 16px; margin-top: 12px; font-size: 11.5px; color: var(--muted); }
+  .ts-punkt { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .ts-punkt-gruen { background: #22C55E; }
+  .ts-punkt-rot { background: #EF4444; }
+  .terminsuche-therapeut-block { margin-bottom: 16px; }
+  .terminsuche-therapeut-block h4 { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--violett); text-transform: uppercase; letter-spacing: 0.02em; }
+  .terminsuche-slot-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .terminsuche-slot-btn {
+    padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit;
+    cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  }
+  .terminsuche-slot-btn:hover { background: var(--violett); border-color: var(--violett); color: #fff; }
+
+  /* Grüner Balken im Tagesraster (seit 2026-10-27, vierzehnter Durchgang): zeigt die von der
+     Terminsuche gefundene freie Zeit direkt im Zeitraster an, statt wie vorher sofort das
+     Anlegen-Modal zu öffnen – ein Klick darauf öffnet das Anlegen-Modal mit Zeit/Heilmittel
+     vorausgefüllt, das kleine × blendet die Markierung wieder aus. Siehe zeigeTerminsucheMarkierung. */
+  .terminsuche-balken {
+    position: absolute; left: 6px; right: 6px;
+    background: #DCFCE7; border: 2px dashed #22C55E; border-radius: 8px;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding: 5px 10px; font-size: 12px; font-weight: 600; color: #166534;
+    cursor: pointer; z-index: 5; animation: ts-balken-puls 1.8s ease-in-out infinite;
+  }
+  .terminsuche-balken-schliessen {
+    background: none; border: none; cursor: pointer; color: #166534; font-size: 14px;
+    line-height: 1; padding: 2px 4px; border-radius: 5px; flex-shrink: 0;
+  }
+  .terminsuche-balken-schliessen:hover { background: rgba(255,255,255,0.7); }
+  @keyframes ts-balken-puls {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.35); }
+    50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+  }
+
+  .hausbesuch-tag-gruppe { margin-bottom: 18px; }
+  .hausbesuch-tag-gruppe h4 { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--violett); text-transform: uppercase; letter-spacing: 0.02em; }
+  .hausbesuch-karte {
+    background: var(--card); border-radius: 12px; box-shadow: var(--schatten-sm); padding: 12px 14px;
+    margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; align-items: flex-start;
+  }
+  .hausbesuch-karte:hover { box-shadow: var(--schatten-md); }
+  .hausbesuch-karte .zeit { font-weight: 700; font-size: 13px; }
+  .hausbesuch-karte .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .hausbesuch-karte .adresse { font-size: 12px; color: var(--text); margin-top: 4px; }
+  /* Drucken: statt eines separaten Schreibdokuments (alte Tabellen-Ansicht) wird jetzt der
+     echte, farbige Tageskalender gedruckt – wie ein Screenshot des Bildschirms auf Papier.
+     Dafür bleibt die komplette App-Struktur im DOM, es werden nur gezielt Bedienelemente
+     ausgeblendet (Navigation, Buttons, Tooltips, Griffe) und Hintergrundfarben per
+     print-color-adjust erzwungen, da Browser diese beim Drucken sonst standardmäßig entfernen. */
+  @media print {
+    @page { size: landscape; margin: 10mm; }
+    html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; }
+    body::before { display: none; }
+    #login-screen, .icon-rail, .notiz-ecke-btn, #ansicht-kalender > header, #status-leiste,
+    .woche-grid, .vergleich-grid, .statistik-karte,
+    #modal-overlay, #patient-modal-overlay, #verordnung-modal-overlay,
+    #warteliste-modal-overlay, #vorschau-modal-overlay,
+    .tooltip, .zeit-indikator, .resize-lineal, .resize-dauer-indikator, .terminsuche-balken,
+    .farbe-popover, .mini-kalender-popover, .notiz-fenster, #patientensuche-overlay, #terminsuche-overlay {
+      display: none !important;
+    }
+    #druck-kopf { display: block !important; margin-bottom: 14px; }
+    #druck-kopf h1 { font-size: 18px; margin: 0 0 2px; }
+    #druck-kopf .druck-datum { color: #555; font-size: 13px; }
+    #app, #app.vergleich-breit { max-width: none; padding: 0; margin: 0; }
+    .app-layout { display: block; }
+    main.hauptbereich { padding: 0; }
+    #ansicht-kalender {
+      padding: 0;
+      /* Seit 2026-10-27 (zwölfter Durchgang): Tagesplan soll laut Lukas immer auf eine Druckseite
+         passen. Die Höhe des Kalenderrasters richtet sich nach den Öffnungszeiten und kann auf
+         A4 quer (abzüglich 10mm Rand ≈ 718px bei 96dpi) größer sein als eine Seite. `zoom` (anders
+         als transform: scale()) verändert die tatsächliche Layout-Box, wodurch auch die
+         Seitenumbruch-Berechnung des Browsers die Verkleinerung berücksichtigt. Der Skalierungs-
+         faktor wird in druckeTagesplan() berechnet (gemessene Höhe/Breite ÷ verfügbarer Platz,
+         nie über 1 = nie vergrößert) und als CSS-Variable gesetzt – die Regel hier greift bewusst
+         NUR unter @media print, damit auf dem Bildschirm vor dem Druckdialog kein sichtbares
+         "Zusammenzucken" der Ansicht entsteht. */
+      zoom: var(--druck-zoom, 1);
+    }
+    /* Innerhalb der gedruckten Termin-Blöcke machen Lösch-/Resize-Griffe und der Hover-Rahmen
+       keinen Sinn (rein interaktiv) – alle drei Pflicht-Angaben (Zeit/Heilmittel/Name) bleiben
+       aber sichtbar, genau wie am Bildschirm. */
+    .termin-block .resize-griff, .termin-block .block-loesch-btn { display: none !important; }
+    .termin-block:hover { box-shadow: none; }
+    .tag-ansicht { break-inside: avoid; }
+  }
