@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=2026-10-28-2">
 </head>
 <body>
 
@@ -280,7 +280,7 @@
             <div style="display:flex; gap:6px; flex-wrap:wrap;">
               <button class="primary-btn" style="padding:8px; font-size:12px; width:auto; padding-left:16px; padding-right:16px;" onclick="backupExportieren()">Backup jetzt exportieren</button>
               <button class="primary-btn" style="padding:8px; font-size:12px; width:auto; padding-left:16px; padding-right:16px;" onclick="backupOeffnenKlick()" title="Eine gespeicherte JSON-Backup-Datei in der Kalenderansicht anzeigen (nur lesen)">Backup öffnen</button>
-              <input type="file" id="backup-datei-input" class="hidden" accept=".json,application/json" onchange="backupDateiGewaehlt(this)">
+              <input type="file" id="backup-datei-input" accept=".json,application/json" onchange="backupDateiGewaehlt(this)" style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none;" tabindex="-1" aria-hidden="true">
             </div>
             <!-- Erscheint nach "Backup jetzt exportieren": zwei eigene Klicks, weil der Browser das
                  "Speichern unter"-Fenster nur direkt nach einem Klick öffnen darf (je Datei einmal). -->
@@ -735,16 +735,18 @@
   <div class="farbe-popover-reihe" id="farbe-popover-pastell"></div>
 </div>
 
-<script src="js/grundlagen.js"></script>
-<script src="js/stammdaten.js"></script>
-<script src="js/verordnungen.js"></script>
-<script src="js/navigation.js"></script>
-<script src="js/tagesansicht.js"></script>
-<script src="js/drag-drop.js"></script>
-<script src="js/termin-modal.js"></script>
-<script src="js/wochen-vergleich.js"></script>
-<script src="js/suche.js"></script>
-<script src="js/weitere-ansichten.js"></script>
-<script src="js/start.js"></script>
+<!-- ?v=... erzwingt nach jedem Update das Laden der neuen Dateien (statt alter Kopien aus dem
+     Browser-Zwischenspeicher). Bei JEDER Änderung an JS/CSS hier und bei style.css hochzählen. -->
+<script src="js/grundlagen.js?v=2026-10-28-2"></script>
+<script src="js/stammdaten.js?v=2026-10-28-2"></script>
+<script src="js/verordnungen.js?v=2026-10-28-2"></script>
+<script src="js/navigation.js?v=2026-10-28-2"></script>
+<script src="js/tagesansicht.js?v=2026-10-28-2"></script>
+<script src="js/drag-drop.js?v=2026-10-28-2"></script>
+<script src="js/termin-modal.js?v=2026-10-28-2"></script>
+<script src="js/wochen-vergleich.js?v=2026-10-28-2"></script>
+<script src="js/suche.js?v=2026-10-28-2"></script>
+<script src="js/weitere-ansichten.js?v=2026-10-28-2"></script>
+<script src="js/start.js?v=2026-10-28-2"></script>
 </body>
 </html>

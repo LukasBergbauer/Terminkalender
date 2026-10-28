@@ -221,17 +221,25 @@
   async function backupDateiGewaehlt(input) {
     const datei = input.files && input.files[0];
     const statusEl = document.getElementById('backup-status');
-    input.value = ''; // dieselbe Datei soll später erneut auswählbar sein
     if (!datei) return;
     let daten;
     try {
-      daten = JSON.parse(await datei.text());
+      // FileReader statt datei.text(): funktioniert auch in älteren Safari-Versionen
+      const inhalt = await new Promise((ok, fehler) => {
+        const leser = new FileReader();
+        leser.onload = () => ok(leser.result);
+        leser.onerror = () => fehler(leser.error);
+        leser.readAsText(datei);
+      });
+      daten = JSON.parse(inhalt);
     } catch (e) {
       statusEl.textContent = 'Die Datei konnte nicht gelesen werden (keine gültige JSON-Datei).';
+      input.value = '';
       return;
     }
     if (!daten || !Array.isArray(daten.termine)) {
       statusEl.textContent = 'Das ist keine Backup-Datei des Terminkalenders.';
+      input.value = '';
       return;
     }
     // Spitze Klammern aus allen Textfeldern entfernen: Die Inhalte landen im HTML der Blöcke, eine
@@ -245,6 +253,7 @@
         kopie.dauer_minuten = Number(kopie.dauer_minuten) || 20;
         return kopie;
       });
+    input.value = ''; // erst nach dem Lesen leeren, damit dieselbe Datei später erneut wählbar ist
     backupAnsichtDaten = { termine, erstellt_am: daten.erstellt_am, zeitraum: daten.zeitraum };
     backupAnsichtTage = [...new Set(termine.map(t => t.datum))].sort();
 

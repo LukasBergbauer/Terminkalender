@@ -456,7 +456,8 @@
     document.getElementById(btnId).textContent = `${art} gespeichert ✓`;
     statusEl.textContent = ergebnis === 'gespeichert'
       ? `${art} gespeichert.`
-      : `${art} heruntergeladen (dieser Browser lässt keinen Speicherort wählen).`;
+      : `${art} wurde vom Browser heruntergeladen – dieser Browser kann kein „Speichern unter“-Fenster öffnen. ` +
+        'Damit er jedes Mal fragt, wohin: in den Browser-Einstellungen „Vor dem Download fragen, wo gespeichert werden soll“ einschalten.';
     try { localStorage.setItem('letztesBackup', backupVorbereitet.datumStr); } catch (e) { /* egal */ }
   }
 

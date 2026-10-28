@@ -6,7 +6,7 @@
 // App auch bei kurzzeitig schlechter Verbindung sofort startet.
 
 // Bei jeder Änderung an der Dateiliste unten die Versionsnummer hochzählen (v2 -> v3 ...).
-const CACHE_NAME = 'terminkalender-shell-v2';
+const CACHE_NAME = 'terminkalender-shell-v3';
 // Achtung: Jede hier genannte Datei MUSS im Repository existieren, sonst schlägt die
 // Installation des Service Workers fehl. Neue JS-Datei -> auch hier eintragen.
 const SHELL_DATEIEN = [
@@ -56,13 +56,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // cache: 'no-cache' = beim Server nachfragen, ob es eine neuere Version gibt (sonst liefert der
+  // Browser nach einem Update bis zu ~10 Minuten lang alte Dateien aus seinem HTTP-Zwischenspeicher).
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-cache' })
       .then((antwort) => {
         const kopie = antwort.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, kopie));
         return antwort;
       })
-      .catch(() => caches.match(event.request).then((treffer) => treffer || caches.match('./index.html')))
+      .catch(() => caches.match(event.request, { ignoreSearch: true }).then((treffer) => treffer || caches.match('./index.html')))
   );
 });
