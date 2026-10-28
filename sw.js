@@ -5,10 +5,25 @@
 // Oberfläche (index.html, manifest, Icons) wird zwischengespeichert, damit die
 // App auch bei kurzzeitig schlechter Verbindung sofort startet.
 
-const CACHE_NAME = 'terminkalender-shell-v1';
+// Bei jeder Änderung an der Dateiliste unten die Versionsnummer hochzählen (v2 -> v3 ...).
+const CACHE_NAME = 'terminkalender-shell-v2';
+// Achtung: Jede hier genannte Datei MUSS im Repository existieren, sonst schlägt die
+// Installation des Service Workers fehl. Neue JS-Datei -> auch hier eintragen.
 const SHELL_DATEIEN = [
   './',
   './index.html',
+  './style.css',
+  './js/grundlagen.js',
+  './js/stammdaten.js',
+  './js/verordnungen.js',
+  './js/navigation.js',
+  './js/tagesansicht.js',
+  './js/drag-drop.js',
+  './js/termin-modal.js',
+  './js/wochen-vergleich.js',
+  './js/suche.js',
+  './js/weitere-ansichten.js',
+  './js/start.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
