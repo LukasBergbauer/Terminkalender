@@ -136,10 +136,12 @@
   #login-error { color: #DC2626; font-size: 13px; margin-top: 10px; min-height: 16px; }
 
   /* App shell */
-  #app { max-width: 1320px; margin: 0 auto; padding: 24px 16px 60px; animation: app-einblenden 0.35s ease; transition: max-width 0.15s ease; }
+  /* Seit 2026-10-28 breiter auf großen Bildschirmen (mind. wie bisher 1320px, höchstens 1600px,
+     mit Abstand zur linken Icon-Leiste). */
+  #app { max-width: clamp(1320px, calc(100vw - 168px), 1600px); margin: 0 auto; padding: 24px 16px 60px; animation: app-einblenden 0.35s ease; transition: max-width 0.15s ease; }
   /* Vergleichsansicht zeigt zwei Tage nebeneinander – braucht mehr Breite als die normale
      Tagesansicht, damit die Spalten nicht zu schmal werden und unnötig oft umbrechen. */
-  #app.vergleich-breit { max-width: 1760px; }
+  #app.vergleich-breit { max-width: clamp(1760px, calc(100vw - 168px), 2200px); }
   @keyframes app-einblenden { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .app-layout { display: flex; gap: 20px; align-items: flex-start; }
   .hauptbereich { flex: 1; min-width: 0; }
@@ -363,7 +365,7 @@
   }
   .header-links { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 
-  .tag-ansicht { display: grid; grid-template-columns: 46px 1fr 1fr; gap: 16px; align-items: start; }
+  .tag-ansicht { display: grid; grid-template-columns: 50px 1fr 1fr; gap: 16px; align-items: start; }
   @media (max-width: 640px) {
     .tag-ansicht { grid-template-columns: 1fr; }
     .zeitachse { display: none; }
@@ -374,7 +376,7 @@
     position: absolute;
     right: 6px;
     transform: translateY(-50%);
-    font-size: 12px;
+    font-size: 13px;
     color: var(--muted);
     white-space: nowrap;
   }
@@ -388,7 +390,7 @@
   }
   .spalte:hover { box-shadow: var(--schatten-md); }
   .spalte h2 {
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 700;
     margin: 0 0 14px;
     display: flex;
@@ -536,7 +538,7 @@
     display: flex; align-items: baseline; gap: 3px 6px; flex-wrap: wrap;
     /* --block-schrift wird per JS (schrumpfeBlockSchrift) reduziert, wenn der Block sonst in
        den nächsten Termin hineinlaufen würde – siehe dort. */
-    font-size: var(--block-schrift, 14.5px); font-weight: 700; color: var(--text); line-height: 1.3;
+    font-size: var(--block-schrift, 16px); font-weight: 700; color: var(--text); line-height: 1.3;
     overflow: hidden; /* Sicherheitsnetz: nichts darf aus dem Block heraus in Nachbar-Termine laufen */
   }
   /* Feste Mindestbreiten für Uhrzeit und Kürzel-Badge (seit 2026-10-27, elfter Durchgang): ohne
@@ -547,7 +549,7 @@
      die Ausrichtung auch bei automatisch verkleinerter Schrift (siehe --block-schrift) konsistent
      bleibt. Längere Kürzel als "KPE 30" wachsen weiterhin über die Mindestbreite hinaus, statt
      abgeschnitten zu werden. */
-  .termin-block .zeile-haupt .zeit { font-weight: 700; color: var(--text); flex-shrink: 0; min-width: 5ch; }
+  .termin-block .zeile-haupt .zeit { font-weight: 700; color: var(--text); flex-shrink: 0; min-width: 5ch; font-variant-numeric: tabular-nums; }
   .termin-block .zeile-haupt .kuerzel {
     font-weight: 700; font-size: 0.86em; color: var(--termin-farbe);
     background: color-mix(in srgb, var(--termin-farbe) 16%, white);
@@ -563,9 +565,12 @@
      denen selbst die kleinste Schrift (siehe schrumpfeBlockSchriftInLane) nicht mehr ausreicht:
      Kürzel/Name werden einzeilig mit "…" abgeschnitten, damit der Block garantiert nicht mehr in
      den nächsten Termin hineinläuft. Vollständiger Name bleibt über Hover/Klick abrufbar. */
-  .termin-block.einzeiler .zeile-haupt { flex-wrap: nowrap; }
-  .termin-block.einzeiler .zeile-haupt .kuerzel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70px; flex-shrink: 0; }
-  .termin-block.einzeiler .zeile-haupt .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Seit 2026-10-28: Kurze Termine zeigen Zeit · Kürzel · Name in EINER Zeile nebeneinander, mit
+     mindestens 13px Schrift. Zeit und Kürzel werden nie gekürzt, nur ein sehr langer Name bei zu
+     schmaler Spalte mit "…" (mind. ca. 3 Buchstaben bleiben sichtbar). */
+  .termin-block.einzeiler .zeile-haupt { flex-wrap: nowrap; align-items: center; line-height: 1.2; }
+  .termin-block.einzeiler .zeile-haupt .kuerzel { white-space: nowrap; flex-shrink: 0; max-width: none; min-width: 0; padding: 0 6px; }
+  .termin-block.einzeiler .zeile-haupt .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 2.5em; }
   .termin-block.kompakt {
     display: flex;
     align-items: flex-start; /* statt center: zusätzliche umgebrochene Zeilen wachsen nach
@@ -577,6 +582,9 @@
      min-width:0 würde es nie unter seine Inhaltsbreite schrumpfen und der Umbruch innen würde
      nie greifen, der Block liefe stattdessen horizontal in Nachbar-Termine hinein. */
   .termin-block.kompakt .zeile-haupt { flex: 1 1 auto; min-width: 0; }
+  /* Einzeiler: weniger Innenabstand oben/unten, damit die eine Zeile auch in 15–20-Minuten-
+     Terminen in voller Größe Platz hat (muss NACH .kompakt und .lane-fango stehen). */
+  .termin-block.einzeiler { padding-top: 1px; padding-bottom: 1px; }
 
   .tooltip {
     position: fixed;
@@ -1184,6 +1192,14 @@
     cursor: pointer; color: var(--muted); font-size: 13px; line-height: 1;
   }
   .vergleich-tag-nav button:hover { background: #F3F2F7; color: var(--text); }
+  /* Seit 2026-10-28: Vergleichsansicht größer – Tagestitel, Navigation, Therapeuten-Köpfe und
+     Zeitachse (nur in .vergleich-grid, die anderen Fenster mit .vergleich-kopf bleiben gleich). */
+  .vergleich-grid .vergleich-kopf h3 { font-size: 16px; }
+  .vergleich-grid .vergleich-tag-nav button { width: 28px; height: 28px; font-size: 15px; }
+  .vergleich-grid .vergleich-therapeut-kopf { font-size: 14px; padding: 6px 10px; }
+  .vergleich-grid .vergleich-zeitachse-spalte { flex-basis: 44px; }
+  .vergleich-grid .vergleich-zeitachse { width: 44px; }
+  .vergleich-grid .vergleich-zeitachse .stunde-label { font-size: 12.5px; }
 
   /* Icons statt Emojis: klar erkennbar, farblich codiert */
   .icon-mini { width: 13px; height: 13px; vertical-align: -2px; display: inline-block; }
