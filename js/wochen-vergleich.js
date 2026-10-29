@@ -20,6 +20,13 @@
     const { data, error } = await db.from('termine').select('*').gte('datum', vonDatum).lte('datum', bisDatum);
     const grid = document.getElementById('woche-grid');
     grid.innerHTML = '';
+    // Seit 2026-10-29: Wochenansicht exakt so hoch wie die Tagesansicht des gewählten Tages
+    // (Raster = Öffnungszeit × PX_PRO_MINUTE, plus 70px für Karten-Innenabstand und Überschrift),
+    // damit beim Umschalten Tag/Woche/Vergleich nichts springt. CSS-Variable, damit die
+    // Handy-Ansicht (height:auto im CSS) weiter greift.
+    const ozWoche = vergleichOeffnungszeit(ausgewaehltesDatum);
+    const pxProMinWoche = (typeof PX_PRO_MINUTE === 'number') ? PX_PRO_MINUTE : 1.2;
+    grid.style.setProperty('--woche-hoehe', ((zeitToMinuten(ozWoche.ende) - zeitToMinuten(ozWoche.start)) * pxProMinWoche + 70) + 'px');
     grid.classList.remove('akkordeon-aktiv');
 
     if (error) {
@@ -120,8 +127,11 @@
   function baueWocheTerminZeile(t, tag) {
     const zeile = document.createElement('div');
     zeile.className = 'woche-termin';
+    // Heilmittel-Farbe wie in der Tagesansicht (Randlinie + Kürzel-Plakette), seit 2026-10-29
+    zeile.style.setProperty('--termin-farbe', 'var(--' + farbeFuerTyp(t.behandlungstyp) + ')');
     const kurz = kurzBehandlung(t.behandlungstyp);
-    zeile.innerHTML = `<span class="zeit">${t.startzeit.slice(0, 5)}</span><span class="kuerzel">${kurz}</span><span class="wer">${t.patientenname}</span>`;
+    const name = (t.patientenname || '').replace(/</g, '&lt;');
+    zeile.innerHTML = `<span class="zeit">${t.startzeit.slice(0, 5)}</span><span class="kuerzel">${kurz}</span><span class="wer">${name}</span>`;
     zeile.title = `${t.therapeut} · ${t.ist_hausbesuch ? 'Hausbesuch' : 'Raum ' + t.raum} · ${t.behandlungstyp}`;
     zeile.onclick = () => {
       ausgewaehltesDatum = new Date(tag);

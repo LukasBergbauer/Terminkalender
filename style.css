@@ -145,7 +145,8 @@
      Sonderbreite der Vergleichsansicht (.vergleich-breit) ist damit aufgehoben. */
   #app.vergleich-breit { max-width: clamp(1320px, calc(100vw - 168px), 1600px); }
   #app:has(#ansicht-kalender:not(.hidden) > #tag-ansicht:not(.hidden)),
-  #app:has(#ansicht-kalender:not(.hidden) > #vergleich-grid:not(.hidden)) { width: calc(100% - 32px); }
+  #app:has(#ansicht-kalender:not(.hidden) > #vergleich-grid:not(.hidden)),
+  #app:has(#ansicht-kalender:not(.hidden) > #woche-grid:not(.hidden)) { width: calc(100% - 32px); }
   @keyframes app-einblenden { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .app-layout { display: flex; gap: 20px; align-items: flex-start; }
   .hauptbereich { flex: 1; min-width: 0; }
@@ -596,6 +597,11 @@
      ganze Name neben Zeit und Kürzel Platz hat. */
   .termin-block.einzeiler .zeile-haupt { gap: 0 5px; }
   .termin-block.einzeiler .zeile-haupt .zeit { min-width: 0; }
+  /* Passt im Einzeiler selbst mit 13px nicht alles (z.B. Fango im Vergleich), fällt zuerst die
+     Uhrzeit weg (seit 2026-10-29, Lukas' Wunsch) – Heilmittel und Name bleiben sichtbar. */
+  .termin-block.ohne-zeit .zeile-haupt .zeit { display: none; }
+  .termin-block.ohne-zeit .zeile-haupt .kuerzel { max-width: none; flex: 0 1 auto; }
+  .termin-block.ohne-zeit .zeile-haupt .name { flex: 0 1 auto; }
 
   .tooltip {
     position: fixed;
@@ -934,7 +940,8 @@
      minimiert sich wieder – rein über CSS :hover gelöst (kein Re-Render nötig). Die ".aktiv"/
      ".akkordeon-aktiv"-Klassen spiegeln denselben Zustand per Klick, damit es auch auf
      Touch-Geräten ohne echtes Hover funktioniert. */
-  .woche-grid { display: flex; gap: 8px; align-items: stretch; height: calc(100vh - 230px); min-height: 420px; }
+  /* Höhe seit 2026-10-29 wie die Tagesansicht (--woche-hoehe setzt renderWoche), Abstand 16px wie dort */
+  .woche-grid { display: flex; gap: 16px; align-items: stretch; height: var(--woche-hoehe, calc(100vh - 230px)); min-height: 420px; }
   @media (max-width: 960px) { .woche-grid { height: auto; flex-wrap: wrap; } .woche-tag-spalte { flex-basis: 150px !important; min-height: 160px; } }
   .woche-tag-spalte {
     flex: 1 1 0; min-width: 0; background: var(--card); border-radius: 14px; box-shadow: var(--schatten-sm);
@@ -946,10 +953,10 @@
   .woche-grid.akkordeon-aktiv .woche-tag-spalte:not(.aktiv) { flex: 0 0 64px; }
   .woche-grid.akkordeon-aktiv .woche-tag-spalte.aktiv { flex: 6 1 0; }
 
-  .woche-tag-voll { padding: 10px; overflow-y: auto; overflow-x: hidden; flex: 1; display: flex; flex-direction: column; min-width: 220px; }
+  .woche-tag-voll { padding: 14px; overflow-y: auto; overflow-x: hidden; flex: 1; display: flex; flex-direction: column; min-width: 220px; }
   .woche-grid:hover .woche-tag-spalte:not(:hover) .woche-tag-voll,
   .woche-grid.akkordeon-aktiv .woche-tag-spalte:not(.aktiv) .woche-tag-voll { display: none; }
-  .woche-tag-kopf { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; white-space: nowrap; }
+  .woche-tag-kopf { font-size: 16px; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; white-space: nowrap; }
   .woche-tag-kopf .tag-zahl { color: var(--muted); font-weight: 500; }
   /* Pro Tag in Andy/Lukas aufgeteilt (seit 2026-10-27, neunter Durchgang), analog zur
      Spaltenreihenfolge überall sonst: Andy links, Lukas rechts. Nur wenn der Filter "Beide"
@@ -958,30 +965,37 @@
   .woche-tag-spalten-split { display: flex; gap: 10px; flex: 1; min-height: 0; }
   .woche-tag-therapeut-spalte { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; }
   .woche-tag-therapeut-label {
-    font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase;
-    letter-spacing: 0.03em; margin-bottom: 5px;
+    font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.03em; margin-bottom: 6px;
   }
+  /* Seit 2026-10-29: Termin-Zeilen der Woche wie die Blöcke der Tagesansicht – größere Schrift,
+     Heilmittel-Farbe (--termin-farbe aus baueWocheTerminZeile), Zeit · Kürzel · Name immer
+     vollständig: Reicht die Breite nicht, bricht der Name in die nächste Zeile um (die Liste hat
+     keinen Zeitmaßstab, die Zeile darf also höher werden), statt mit "…" gekürzt zu werden. */
   .woche-termin {
-    display: flex; align-items: baseline; gap: 5px;
-    font-size: 11px; padding: 4px 6px; border-radius: 6px; margin-bottom: 4px;
-    border-left: 3px solid var(--violett); background: #F6F5FF; cursor: pointer;
+    --termin-farbe: var(--violett);
+    display: flex; align-items: baseline; gap: 2px 6px; flex-wrap: wrap;
+    font-size: 14px; line-height: 1.3; padding: 5px 8px; border-radius: 8px; margin-bottom: 5px;
+    border-left: 4px solid var(--termin-farbe); background: color-mix(in srgb, var(--termin-farbe) 14%, white); cursor: pointer;
   }
-  .woche-termin .zeit { font-weight: 700; flex-shrink: 0; }
+  .woche-termin .zeit { font-weight: 700; flex-shrink: 0; font-variant-numeric: tabular-nums; }
   /* Heilmittel-Kürzel in der Wochenansicht-Zeile (seit 2026-10-27, zwölfter Durchgang, im
      dreizehnten Durchgang korrigiert): soll NUR in der großen (gehoverten/gepinnten) Spalte
      sichtbar sein, da dort genug Breite übrig ist – im Ruhezustand (alle Spalten gleich breit)
      bleibt es wie vorher nur Uhrzeit + Name, das Kürzel steht dort weiterhin im nativen
      Hover-Titel (title-Attribut). Standardmäßig versteckt, nur innerhalb der aktiven/gehoverten
      großen Spalte eingeblendet. */
-  .woche-termin .kuerzel { display: none; flex-shrink: 0; color: var(--muted); font-weight: 600; }
-  .woche-grid:hover .woche-tag-spalte:hover .woche-termin .kuerzel,
-  .woche-grid.akkordeon-aktiv .woche-tag-spalte.aktiv .woche-termin .kuerzel { display: inline; }
+  /* Seit 2026-10-29 immer sichtbar (vorher nur in der aufgeklappten Spalte), als farbige Plakette wie in der Tagesansicht */
+  .woche-termin .kuerzel {
+    flex-shrink: 0; font-weight: 700; font-size: 0.86em; color: var(--termin-farbe);
+    background: color-mix(in srgb, var(--termin-farbe) 16%, white); border-radius: 5px; padding: 0 6px;
+  }
   /* `min-width: 0` ist hier zwingend nötig (klassische Flexbox-Falle): ohne das verhindert der
      Browser-Default `min-width: auto` bei Flex-Items das Schrumpfen unter die Inhaltsbreite, der
      Name lief dadurch (seit Hinzufügen des Kürzels) bei längeren Namen über die Spaltenbreite
      hinaus und erzeugte einen horizontalen Scrollbalken am unteren Rand der Spalte. */
-  .woche-termin .wer { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .woche-leer { font-size: 11px; color: var(--muted); }
+  .woche-termin .wer { font-weight: 700; white-space: normal; overflow-wrap: anywhere; min-width: 0; }
+  .woche-leer { font-size: 13px; color: var(--muted); }
 
   .woche-tag-mini {
     display: none; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
@@ -989,8 +1003,8 @@
   }
   .woche-grid:hover .woche-tag-spalte:not(:hover) .woche-tag-mini,
   .woche-grid.akkordeon-aktiv .woche-tag-spalte:not(.aktiv) .woche-tag-mini { display: flex; }
-  .woche-tag-mini .mini-wochentag { font-size: 12px; font-weight: 700; }
-  .woche-tag-mini .mini-datum { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .woche-tag-mini .mini-wochentag { font-size: 14px; font-weight: 700; }
+  .woche-tag-mini .mini-datum { font-size: 12px; color: var(--muted); white-space: nowrap; }
   .woche-tag-mini .mini-anzahl {
     min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
     background: linear-gradient(90deg, var(--blau), var(--pink));

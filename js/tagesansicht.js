@@ -103,7 +103,7 @@
       .map(el => ({ el, top: parseFloat(el.style.top) || 0, hoehe: parseFloat(el.style.height) || 0 }))
       .sort((a, b) => a.top - b.top);
     if (!bloecke.length) return;
-    bloecke.forEach(b => { b.el.style.removeProperty('--block-schrift'); b.el.classList.remove('einzeiler'); });
+    bloecke.forEach(b => { b.el.style.removeProperty('--block-schrift'); b.el.classList.remove('einzeiler', 'ohne-zeit'); });
     const laneHoehe = laneEl.scrollHeight || laneEl.clientHeight || 0;
     bloecke.forEach((eintrag, i) => {
       const naechsterTop = (i + 1 < bloecke.length) ? bloecke[i + 1].top : laneHoehe;
@@ -122,23 +122,32 @@
       // Name über Hover/Klick). Schrift so groß wie möglich, mindestens 13px (letzter Schritt bleibt
       // stehen, auch wenn selbst der nicht ganz passt).
       // Seit 2026-10-29 zusätzlich auch nach der Breite: gewählt wird die größte Schrift, bei der
-      // die Zeile in die Höhe passt UND der Name nicht mit "…" gekürzt wird. Gibt es die nicht,
-      // die größte Schrift, die in die Höhe passt (sonst 13px).
+      // die Zeile in die Höhe passt UND Heilmittel-Kürzel und Name nicht mit "…" gekürzt werden.
+      // Reicht die Breite selbst mit 13px nicht, wird (auf Lukas' Wunsch) zuerst die UHRZEIT
+      // weggelassen (Klasse .ohne-zeit) – sie ist über die Position im Raster ablesbar und steht im
+      // Hover-Fenster –, damit Heilmittel und Name sichtbar bleiben. Erst danach wird gekürzt.
       if (!passt) {
         eintrag.el.classList.add('einzeiler');
         const nameEl = eintrag.el.querySelector('.zeile-haupt .name');
+        const kuerzelEl = eintrag.el.querySelector('.zeile-haupt .kuerzel');
+        const ganz = el => !el || el.scrollWidth <= el.clientWidth + 1;
         let groessteHoehePasst = null;
-        let gefunden = false;
-        for (const schrift of SCHRUMPF_SCHRITTE_EINZEILIG) {
-          eintrag.el.style.setProperty('--block-schrift', schrift + 'px');
-          const hoehePasst = blockInhaltHoehe(eintrag.el) <= verfuegbar;
-          if (hoehePasst && groessteHoehePasst === null) groessteHoehePasst = schrift;
-          const nameGanz = !nameEl || nameEl.scrollWidth <= nameEl.clientWidth + 1;
-          if (hoehePasst && nameGanz) { gefunden = true; break; }
-        }
-        if (!gefunden) {
-          const letzte = SCHRUMPF_SCHRITTE_EINZEILIG[SCHRUMPF_SCHRITTE_EINZEILIG.length - 1];
-          eintrag.el.style.setProperty('--block-schrift', (groessteHoehePasst || letzte) + 'px');
+        const versuche = () => {
+          for (const schrift of SCHRUMPF_SCHRITTE_EINZEILIG) {
+            eintrag.el.style.setProperty('--block-schrift', schrift + 'px');
+            const hoehePasst = blockInhaltHoehe(eintrag.el) <= verfuegbar;
+            if (hoehePasst && groessteHoehePasst === null) groessteHoehePasst = schrift;
+            if (hoehePasst && ganz(nameEl) && ganz(kuerzelEl)) return true;
+          }
+          return false;
+        };
+        if (!versuche()) {
+          eintrag.el.classList.add('ohne-zeit');
+          groessteHoehePasst = null;
+          if (!versuche()) {
+            const letzte = SCHRUMPF_SCHRITTE_EINZEILIG[SCHRUMPF_SCHRITTE_EINZEILIG.length - 1];
+            eintrag.el.style.setProperty('--block-schrift', (groessteHoehePasst || letzte) + 'px');
+          }
         }
       }
     });
