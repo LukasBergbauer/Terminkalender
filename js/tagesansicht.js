@@ -121,11 +121,24 @@
       // vollständig, nur ein sehr langer Name wird bei zu schmaler Spalte mit "…" gekürzt – voller
       // Name über Hover/Klick). Schrift so groß wie möglich, mindestens 13px (letzter Schritt bleibt
       // stehen, auch wenn selbst der nicht ganz passt).
+      // Seit 2026-10-29 zusätzlich auch nach der Breite: gewählt wird die größte Schrift, bei der
+      // die Zeile in die Höhe passt UND der Name nicht mit "…" gekürzt wird. Gibt es die nicht,
+      // die größte Schrift, die in die Höhe passt (sonst 13px).
       if (!passt) {
         eintrag.el.classList.add('einzeiler');
+        const nameEl = eintrag.el.querySelector('.zeile-haupt .name');
+        let groessteHoehePasst = null;
+        let gefunden = false;
         for (const schrift of SCHRUMPF_SCHRITTE_EINZEILIG) {
           eintrag.el.style.setProperty('--block-schrift', schrift + 'px');
-          if (blockInhaltHoehe(eintrag.el) <= verfuegbar) break;
+          const hoehePasst = blockInhaltHoehe(eintrag.el) <= verfuegbar;
+          if (hoehePasst && groessteHoehePasst === null) groessteHoehePasst = schrift;
+          const nameGanz = !nameEl || nameEl.scrollWidth <= nameEl.clientWidth + 1;
+          if (hoehePasst && nameGanz) { gefunden = true; break; }
+        }
+        if (!gefunden) {
+          const letzte = SCHRUMPF_SCHRITTE_EINZEILIG[SCHRUMPF_SCHRITTE_EINZEILIG.length - 1];
+          eintrag.el.style.setProperty('--block-schrift', (groessteHoehePasst || letzte) + 'px');
         }
       }
     });

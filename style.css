@@ -142,6 +142,16 @@
   /* Vergleichsansicht zeigt zwei Tage nebeneinander – braucht mehr Breite als die normale
      Tagesansicht, damit die Spalten nicht zu schmal werden und unnötig oft umbrechen. */
   #app.vergleich-breit { max-width: clamp(1760px, calc(100vw - 168px), 2200px); }
+  /* Seit 2026-10-29: Vergleichsansicht nutzt die ganze Bildschirmbreite (links Platz für die
+     Icon-Leiste), damit vier Therapeuten-Karten so breit werden wie möglich. Greift direkt per
+     CSS, sobald die Vergleichsansicht sichtbar ist (unabhängig von der Klasse oben). */
+  @media (min-width: 861px) {
+    #app:has(#ansicht-kalender:not(.hidden) #vergleich-grid:not(.hidden)) {
+      /* width:100% nötig: body ist ein Flex-Container (senkrechte Zentrierung), dort wäre #app
+         sonst nur so breit wie sein Inhalt. */
+      width: 100%; box-sizing: border-box; max-width: none; padding-left: 92px; padding-right: 24px;
+    }
+  }
   @keyframes app-einblenden { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .app-layout { display: flex; gap: 20px; align-items: flex-start; }
   .hauptbereich { flex: 1; min-width: 0; }
@@ -569,7 +579,7 @@
      mindestens 13px Schrift. Zeit und Kürzel werden nie gekürzt, nur ein sehr langer Name bei zu
      schmaler Spalte mit "…" (mind. ca. 3 Buchstaben bleiben sichtbar). */
   .termin-block.einzeiler .zeile-haupt { flex-wrap: nowrap; align-items: center; line-height: 1.2; }
-  .termin-block.einzeiler .zeile-haupt .kuerzel { white-space: nowrap; flex-shrink: 0; max-width: none; min-width: 0; padding: 0 6px; }
+  .termin-block.einzeiler .zeile-haupt .kuerzel { white-space: nowrap; flex-shrink: 0; max-width: none; min-width: 0; padding: 0 5px; }
   .termin-block.einzeiler .zeile-haupt .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 2.5em; }
   .termin-block.kompakt {
     display: flex;
@@ -584,7 +594,11 @@
   .termin-block.kompakt .zeile-haupt { flex: 1 1 auto; min-width: 0; }
   /* Einzeiler: weniger Innenabstand oben/unten, damit die eine Zeile auch in 15–20-Minuten-
      Terminen in voller Größe Platz hat (muss NACH .kompakt und .lane-fango stehen). */
-  .termin-block.einzeiler { padding-top: 1px; padding-bottom: 1px; }
+  .termin-block.einzeiler { padding: 1px 6px 1px 7px; }
+  /* Einzeiler etwas enger gesetzt (seit 2026-10-29), damit auch in schmalen Spalten möglichst der
+     ganze Name neben Zeit und Kürzel Platz hat. */
+  .termin-block.einzeiler .zeile-haupt { gap: 0 5px; }
+  .termin-block.einzeiler .zeile-haupt .zeit { min-width: 0; }
 
   .tooltip {
     position: fixed;
@@ -1192,14 +1206,38 @@
     cursor: pointer; color: var(--muted); font-size: 13px; line-height: 1;
   }
   .vergleich-tag-nav button:hover { background: #F3F2F7; color: var(--text); }
-  /* Seit 2026-10-28: Vergleichsansicht größer – Tagestitel, Navigation, Therapeuten-Köpfe und
-     Zeitachse (nur in .vergleich-grid, die anderen Fenster mit .vergleich-kopf bleiben gleich). */
-  .vergleich-grid .vergleich-kopf h3 { font-size: 16px; }
+  /* Seit 2026-10-29: Vergleichsansicht im selben Layout wie die Tagesansicht – jeder Therapeut
+     als eigene weiße Karte mit großer Überschrift, Zeitachse links daneben, gleiche Schrift- und
+     Rastergrößen. Die Tageskarte drumherum (.vergleich-spalte) ist nur noch ein unsichtbarer
+     Rahmen mit dem Tagestitel. Gilt nur in .vergleich-grid (Backup-Ansicht bleibt wie sie ist). */
+  .vergleich-grid { gap: 32px; }
+  .vergleich-grid .vergleich-spalte { background: none; box-shadow: none; padding: 0; border-radius: 0; }
+  .vergleich-grid .vergleich-kopf { min-height: 32px; margin-bottom: 12px; padding-left: 66px; }
+  .vergleich-grid .vergleich-kopf h3 { font-size: 17px; }
   .vergleich-grid .vergleich-tag-nav button { width: 28px; height: 28px; font-size: 15px; }
-  .vergleich-grid .vergleich-therapeut-kopf { font-size: 14px; padding: 6px 10px; }
-  .vergleich-grid .vergleich-zeitachse-spalte { flex-basis: 44px; }
-  .vergleich-grid .vergleich-zeitachse { width: 44px; }
-  .vergleich-grid .vergleich-zeitachse .stunde-label { font-size: 12.5px; }
+  .vergleich-grid .vergleich-tag { gap: 16px; }
+  .vergleich-grid .vergleich-therapeut-spalte {
+    background: var(--card); border-radius: var(--radius); padding: 18px;
+    box-shadow: var(--schatten-sm); transition: box-shadow 0.2s ease;
+  }
+  .vergleich-grid .vergleich-therapeut-spalte:hover { box-shadow: var(--schatten-md); }
+  /* Überschrift "Andy"/"Lukas" wie .spalte h2 in der Tagesansicht */
+  .vergleich-grid .vergleich-therapeut-kopf {
+    font-size: 17px; font-weight: 700; padding: 0; margin: 0 0 14px;
+    background: none; border-radius: 0; line-height: 1.3;
+  }
+  .vergleich-grid .zeitraster.vergleich-raster { border-radius: 12px; }
+  /* Zeitachse: gleicher Abstand nach oben wie die Karten-Innenabstände, damit 08:00 genau auf
+     der ersten Rasterlinie liegt (der unsichtbare Platzhalter-Kopf hat dieselbe Höhe). */
+  .vergleich-grid .vergleich-zeitachse-spalte { flex-basis: 50px; min-width: 0; padding-top: 18px; }
+  /* Unsichtbarer Platzhalter-Kopf: gleiche Höhe wie "Andy"/"Lukas", darf die Achse aber nicht
+     breiter machen. */
+  .vergleich-grid .vergleich-zeitachse-spalte .vergleich-therapeut-kopf { white-space: nowrap; overflow: hidden; }
+  /* Fango/Massage-Spalte im Vergleich breiter (halbe Karte statt 36 %), da hier vier Karten
+     nebeneinander stehen und kurze Termine sonst keinen Platz für den Namen hätten. */
+  .vergleich-grid .lane-fango:not(.leer) { flex-basis: 50%; }
+  .vergleich-grid .vergleich-zeitachse { width: 50px; }
+  .vergleich-grid .vergleich-zeitachse .stunde-label { font-size: 13px; right: 6px; }
 
   /* Icons statt Emojis: klar erkennbar, farblich codiert */
   .icon-mini { width: 13px; height: 13px; vertical-align: -2px; display: inline-block; }
