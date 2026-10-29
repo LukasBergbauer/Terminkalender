@@ -173,7 +173,9 @@
       leerEl.classList.remove('hidden');
       return;
     }
-    titelEl.textContent = formatierterTitel(vergleichsDatum);
+    // Kurzform (z.B. "Fr., 30.10.2026") seit 2026-10-29: Der Titel steht jetzt rechts in der
+    // Überschriftenzeile der Lukas-Karte und muss dort auch bei schmaleren Bildschirmen Platz haben.
+    titelEl.textContent = vergleichsDatum.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
     tagEl.classList.remove('hidden');
     leerEl.classList.add('hidden');
     await renderVergleichSpalte(vergleichsDatum, 'rechts');
